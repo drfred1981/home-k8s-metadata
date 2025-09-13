@@ -6,11 +6,6 @@ from typing import List, Dict, Optional
 import os
 import sys
 
-# Ajoutez la racine du projet au chemin d'accès Python
-# Cela permet d'utiliser des imports absolus comme `from src.services.apps import ...`
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if project_root not in sys.path:
-    sys.path.append(project_root)
 
 # Utilisation d'une importation relative pour le module logger
 # Cela suppose que le fichier logger.py est dans le même répertoire que app.py
@@ -49,5 +44,5 @@ app = create_app()
 
 if __name__ == '__main__':
     # Lance l'application avec le serveur de développement Flask
-    print("I'm starting web server")
+    print("I'm starting the web server")
     app.run(debug=True)

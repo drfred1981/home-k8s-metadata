@@ -11,11 +11,11 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copie l'ensemble du code de l'application dans le conteneur
-COPY . .
+COPY app .
 
 # Expose le port par défaut de l'application Flask
 EXPOSE 5000
 
 # Définit la commande pour lancer l'application avec Gunicorn
 # Les variables d'environnement seront passées au moment de l'exécution
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "src.app:app"]
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "app:app"]
