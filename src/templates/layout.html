@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Mon Projet{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+            <div class="container">
+                <a class="navbar-brand" href="/">Prod Metadata Tools</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/">Accueil</a>
+                        </li>
+                        <li class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownExigences" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+        Applications
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="appsDropdownMenuLink">
+                        <li><a class="dropdown-item" href="{{ url_for('applications.global_dependency_graph_page') }}">Graphe Global</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('components.components_page') }}">Gestion des Components</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('substitutes.substitutes_page') }}">Gestion des Substitutes</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('ingressannotations.ingress_annotations_page') }}">Gestion des Ingress Annotations</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('applications.applications_page') }}">Gestion des Applications</a></li>
+                    </ul>
+</li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/about">A propos</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/contact">Contact</a>
+                        </li>
+
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container my-5">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="bg-dark text-white text-center py-3">
+        <div class="container">
+            <p class="mb-0">&copy; 2025 Prod Metadata Tools. Team Datalake Prod</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

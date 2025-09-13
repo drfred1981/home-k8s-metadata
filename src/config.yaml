@@ -1,0 +1,5 @@
+data_paths:
+  components: ../metadatas/components.yaml
+  substitutes: ../metadatas/substitutes.yaml
+  ingress_annotations: "../metadatas/ingress_annotations.yaml"
+  applications_root: "../metadatas/apps/"

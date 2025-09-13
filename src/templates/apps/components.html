@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+
+{% block title %}Gestion des Components{% endblock %}
+
+{% block content %}
+    <h1 class="mb-4">Gestion des Components</h1>
+
+    <div class="card mb-4">
+        <div class="card-header">Formulaire</div>
+        <div class="card-body">
+            <form id="componentForm">
+                <input type="hidden" id="originalComponentName" name="originalComponentName"> 
+                <div class="mb-3">
+                    <label for="nom" class="form-label">Nom du Component :</label>
+                    <input type="text" class="form-control" id="nom" name="nom" required>
+                </div>
+                <button type="submit" id="submitBtn" class="btn btn-primary">Ajouter</button>
+                <button type="button" id="cancelBtn" class="btn btn-secondary" style="display: none;">Annuler</button>
+            </form>
+        </div>
+    </div>
+
+    <h2>Liste des Components</h2>
+    <div class="table-responsive">
+        <table class="table table-striped" id="componentsTable">
+            <thead>
+                <tr>
+                    <th>Nom</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                </tbody>
+        </table>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('static', filename='js/apps/components.js') }}"></script>
+{% endblock %}

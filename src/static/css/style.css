@@ -1,0 +1,41 @@
+/* backend/static/css/style.css */
+
+/* S'assurer que le sous-menu a une largeur raisonnable et qu'il est bien positionné */
+.dropdown-menu .dropdown-menu {
+    margin-left: 0;
+    top: 0;
+    left: 100%;
+}
+
+/* Corriger l'apparence des sous-menus au survol */
+.dropdown-toggle.dropdown-item::after {
+    border: none;
+    content: "▶"; /* Utiliser un symbole pour un meilleur rendu */
+    font-size: 0.7em;
+    position: absolute;
+    right: 0.5em;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+/* Afficher le sous-menu au survol */
+.dropdown-item.dropdown-toggle:hover > .dropdown-menu {
+    display: block;
+}
+
+/* Masquer le sous-menu par défaut */
+.dropdown-menu .dropdown-menu {
+    display: none;
+}
+
+.navbarDropdownGeneration {
+    color: blueviolet; 
+    
+}
+
+.cell_array_exigence{
+    text-align: center;
+}
+.cell_header_array_exigence{
+    text-align: center; 
+}

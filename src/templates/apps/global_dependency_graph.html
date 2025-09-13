@@ -1,0 +1,41 @@
+{% extends "layout.html" %}
+
+{% block title %}Graphe Global des Dépendances{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Graphe Global des Dépendances des Applications</h1>
+
+<div class="row mb-3 align-items-center">
+    <div class="col-md-3">
+        <label for="layoutMode" class="form-label mb-0">Mode d'affichage :</label>
+    </div>
+    <div class="col-md-3">
+        <select class="form-select" id="layoutMode">
+            <option value="top-down" selected>Haut-Bas</option>
+            <option value="left-right">Gauche-Droite</option>
+            <option value="normal">Mode Normal (réseau)</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label for="namespaceFilter" class="form-label mb-0">Filtrer par Namespace :</label>
+    </div>
+    <div class="col-md-3">
+        <select class="form-select" id="namespaceFilter" multiple size="5"> 
+            <option value="all" selected>Toutes les applications</option>
+        </select>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body bg-light">
+        <div id="globalDependencyGraphContainer" style="width: 100%; height: 800px; overflow: auto;">
+            <svg id="globalDependencyGraph"></svg>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="{{ url_for('static', filename='js/apps/global_dependency_graph.js') }}"></script>
+{% endblock %}

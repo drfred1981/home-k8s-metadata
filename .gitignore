@@ -1,0 +1,7 @@
+# Fichiers et répertoires générés par Python
+__pycache__/
+*.pyc
+
+# Environnements virtuels
+venv/
+.venv/
