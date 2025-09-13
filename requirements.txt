@@ -2,4 +2,4 @@ pyyaml
 flask
 pydantic
 gunicorn
-pygit
+GitPython
