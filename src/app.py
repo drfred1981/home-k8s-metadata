@@ -1,32 +1,28 @@
+# backend/app.py
+
 from flask import Flask, render_template
-import os
-from pydantic import BaseModel
 from typing import List, Dict, Optional
 
-from logger import setup_logging # Import du logger
+# Utilisation d'une importation relative pour le module logger
+# Cela suppose que le fichier logger.py est dans le même répertoire que app.py
+from .logger import setup_logging
 
-from routes.apps.applications import applications_bp
-from routes.apps.components import components_bp
-from routes.apps.substitutes import substitutes_bp
-from routes.apps.ingress_annotations import ingress_annotations_bp
-
-app = Flask(__name__)
-# Configuration du logger
-# Vous pouvez changer le niveau ici, par exemple 'DEBUG' en développement
-setup_logging(app, log_level='DEBUG')
-# Enregistrer le Blueprint, ce qui inclut les routes de ses sous-modules
-app.register_blueprint(applications_bp, url_prefix='/apps')
-app.register_blueprint(components_bp, url_prefix='/apps')
-app.register_blueprint(substitutes_bp, url_prefix='/apps')
-app.register_blueprint(ingress_annotations_bp, url_prefix='/apps')
+# Importation des Blueprints
+from .routes.apps.applications import applications_bp
+from .routes.apps.components import components_bp
+from .routes.apps.substitutes import substitutes_bp
+from .routes.apps.ingress_annotations import ingress_annotations_bp
 
 def create_app():
+    """
+    Fonction de fabrique pour créer et configurer l'application Flask.
+    """
     app = Flask(__name__)
-    # Remarque : La variable DATA_PATHS n'est plus importée ici car elle est
-    # gérée dans le service et la configuration.
     
-    # Enregistrement des Blueprints
-    # ✅ Les objets de blueprint sont importés et enregistrés correctement.
+    # Configuration du logger
+    setup_logging(app, log_level='DEBUG')
+
+    # Enregistrement des Blueprints avec leur préfixe d'URL
     app.register_blueprint(applications_bp, url_prefix='/apps')
     app.register_blueprint(components_bp, url_prefix='/apps')
     app.register_blueprint(substitutes_bp, url_prefix='/apps')
@@ -38,9 +34,11 @@ def create_app():
 
     return app
 
+# La variable 'app' est nécessaire pour Gunicorn
+# Elle est définie ici en appelant la fonction de fabrique
+app = create_app()
+
 if __name__ == '__main__':
-    # La configuration est maintenant dans un module à part (config.py)
-    # et n'a pas besoin d'être passée directement ici.
+    # Lance l'application avec le serveur de développement Flask
     print("I'm starting web server")
-    app = create_app()
     app.run(debug=True)
