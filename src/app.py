@@ -14,7 +14,7 @@ if project_root not in sys.path:
 
 # Utilisation d'une importation relative pour le module logger
 # Cela suppose que le fichier logger.py est dans le même répertoire que app.py
-from logger import setup_logging
+from .logger import setup_logging
 
 # Importation des Blueprints
 from routes.apps.applications import applications_bp

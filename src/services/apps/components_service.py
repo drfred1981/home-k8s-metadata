@@ -1,6 +1,6 @@
 import yaml
 import os
-from config import DATA_PATHS
+from .config import DATA_PATHS
 
 # Chemin du fichier YAML pour les components
 YAML_FILE_PATH = DATA_PATHS.get('components')

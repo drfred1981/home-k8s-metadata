@@ -1,5 +1,5 @@
 import yaml
-from config import DATA_PATHS
+from .config import DATA_PATHS
 import os
 
 SUBSTITUTES_PATH = DATA_PATHS.get('substitutes')
