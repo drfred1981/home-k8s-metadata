@@ -1,6 +1,7 @@
 # Utilise une image Python légère comme base
-FROM python:3.10-
-    
+FROM python:3.10-slim
+
+
 # 🎯 Rajout de l'installation de Git
 RUN apt-get update && apt-get install -y git
 # Définit le répertoire de travail dans le conteneur
