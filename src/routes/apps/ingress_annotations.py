@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, render_template
-from services.apps import ingress_annotations_service
+from .services.apps import ingress_annotations_service
 ingress_annotations_bp = Blueprint('ingressannotations', __name__)
 
 @ingress_annotations_bp.route('/ingress-annotations')
