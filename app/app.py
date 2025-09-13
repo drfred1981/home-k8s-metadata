@@ -38,8 +38,6 @@ def create_app():
     """
     repo_url = os.environ.get('REPO_URL')
     repo_path = os.environ.get('REPO_PATH')
-    current_app.logger.info(f"repo_url: {repo_url}")
-    current_app.logger.info(f"repo_path: {repo_path}")
     if not repo_url or not repo_path:
         current_app.logger.error("Les variables d'environnement REPO_URL ou REPO_PATH ne sont pas définies.")
         return
