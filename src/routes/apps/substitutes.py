@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, render_template
-from .services.apps import substitutes_service
+from ..services.apps import substitutes_service
 
 substitutes_bp = Blueprint('substitutes', __name__)
 
