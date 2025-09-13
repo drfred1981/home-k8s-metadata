@@ -1,5 +1,5 @@
 import yaml
-from .config import DATA_PATHS
+from config import DATA_PATHS
 import os
 
 ANNOTATIONS_PATH = DATA_PATHS.get('ingress_annotations')

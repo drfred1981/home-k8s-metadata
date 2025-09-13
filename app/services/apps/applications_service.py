@@ -1,6 +1,6 @@
 import yaml
 import os
-from .config import DATA_PATHS
+from config import DATA_PATHS
 
 # Chemin du répertoire racine des applications
 ROOT_PATH = DATA_PATHS.get('applications_root')
