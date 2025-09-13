@@ -2,7 +2,9 @@ import yaml
 from config import DATA_PATHS
 import os
 
-SUBSTITUTES_PATH = DATA_PATHS.get('substitutes')
+REPO_PATH = os.environ.get('REPO_PATH')
+# Chemin du répertoire racine des applications
+SUBSTITUTES_PATH = REPO_PATH+"/"+DATA_PATHS.get('substitutes')
 
 def load_data():
     """

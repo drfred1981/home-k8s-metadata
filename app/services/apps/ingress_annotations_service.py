@@ -1,8 +1,9 @@
 import yaml
 from config import DATA_PATHS
 import os
-
-ANNOTATIONS_PATH = DATA_PATHS.get('ingress_annotations')
+REPO_PATH = os.environ.get('REPO_PATH')
+# Chemin du répertoire racine des applications
+ANNOTATIONS_PATH = REPO_PATH+"/"+DATA_PATHS.get('ingress_annotations')
 
 def load_data():
     """

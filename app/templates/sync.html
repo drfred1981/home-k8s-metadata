@@ -1,0 +1,110 @@
+{% extends "layout.html" %}
+
+{% block title %}Synchronisation Git{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Synchronisation du Dépôt</h1>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <p><strong>Statut du dépôt :</strong> <span id="repo-status">{{ status }}</span></p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h3>Pull (Récupérer les mises à jour)</h3>
+            </div>
+            <div class="card-body">
+                <p>Récupère les dernières modifications du dépôt distant.</p>
+                <button id="pull-button" class="btn btn-primary">Lancer le Pull</button>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h3>Push (Envoyer les modifications)</h3>
+            </div>
+            <div class="card-body">
+                <p>Ajoute les changements, les commite et les envoie au dépôt.</p>
+                <div class="mb-3">
+                    <label for="commit-message" class="form-label">Message de Commit</label>
+                    <input type="text" class="form-control" id="commit-message" placeholder="Votre message de commit" required>
+                </div>
+                <button id="push-button" class="btn btn-success">Lancer le Push</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4">
+    <div id="sync-feedback" class="alert d-none"></div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const pullButton = document.getElementById('pull-button');
+        const pushButton = document.getElementById('push-button');
+        const commitMessageInput = document.getElementById('commit-message');
+        const feedbackDiv = document.getElementById('sync-feedback');
+
+        const showFeedback = (message, type) => {
+            feedbackDiv.textContent = message;
+            feedbackDiv.className = `alert alert-${type}`;
+            feedbackDiv.classList.remove('d-none');
+            setTimeout(() => {
+                feedbackDiv.classList.add('d-none');
+            }, 5000);
+        };
+
+        pullButton.addEventListener('click', async () => {
+            showFeedback('Lancement du pull...', 'info');
+            try {
+                const response = await fetch('/api/git-pull', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    showFeedback(data.message.join('\n'), 'success');
+                } else {
+                    showFeedback(data.error, 'danger');
+                }
+            } catch (e) {
+                showFeedback('Erreur réseau lors du pull.', 'danger');
+            }
+        });
+
+        pushButton.addEventListener('click', async () => {
+            const commitMessage = commitMessageInput.value;
+            if (!commitMessage) {
+                showFeedback('Veuillez entrer un message de commit.', 'warning');
+                return;
+            }
+
+            showFeedback('Lancement du push...', 'info');
+            try {
+                const response = await fetch('/api/git-push', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ commit_message: commitMessage })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    showFeedback(data.message, 'success');
+                } else {
+                    showFeedback(data.error, 'danger');
+                }
+            } catch (e) {
+                showFeedback('Erreur réseau lors du push.', 'danger');
+            }
+        });
+    });
+</script>
+{% endblock %}

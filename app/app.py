@@ -16,7 +16,7 @@ from routes.apps.applications import applications_bp
 from routes.apps.components import components_bp
 from routes.apps.substitutes import substitutes_bp
 from routes.apps.ingress_annotations import ingress_annotations_bp
-
+from routes.sync import sync_bp
 def create_app():
     """
     Fonction de fabrique pour créer et configurer l'application Flask.
@@ -30,7 +30,31 @@ def create_app():
     app.register_blueprint(applications_bp, url_prefix='/apps')
     app.register_blueprint(components_bp, url_prefix='/apps')
     app.register_blueprint(substitutes_bp, url_prefix='/apps')
+    app.register_blueprint(sync_bp, url_prefix='/')
     app.register_blueprint(ingress_annotations_bp, url_prefix='/apps')
+    """
+    Vérifie si le dépôt existe et le clone si ce n'est pas le cas.
+    Utilise les variables d'environnement REPO_URL et REPO_PATH.
+    """
+    repo_url = os.environ.get('REPO_URL')
+    repo_path = os.environ.get('REPO_PATH')
+    if not repo_url or not repo_path:
+        print("Les variables d'environnement REPO_URL ou REPO_PATH ne sont pas définies.")
+        return
+
+    # Vérifie si le chemin d'accès existe déjà
+    if os.path.exists(repo_path):
+        print(f"Le dépôt existe déjà à l'emplacement {repo_path}")
+    else:
+        print(f"Clonage du dépôt depuis {repo_url} vers {repo_path}")
+        try:
+            # Crée le répertoire parent si nécessaire
+            os.makedirs(os.path.dirname(repo_path), exist_ok=True)
+            # Clone le dépôt
+            git.Repo.clone_from(repo_url, repo_path)
+            print("Clonage réussi.")
+        except git.GitCommandError as e:
+            print(f"Erreur lors du clonage du dépôt : {e}")
 
     @app.route('/')
     def index():

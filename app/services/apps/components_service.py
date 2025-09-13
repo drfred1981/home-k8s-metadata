@@ -2,8 +2,9 @@ import yaml
 import os
 from config import DATA_PATHS
 
-# Chemin du fichier YAML pour les components
-YAML_FILE_PATH = DATA_PATHS.get('components')
+REPO_PATH = os.environ.get('REPO_PATH')
+# Chemin du répertoire racine des applications
+YAML_FILE_PATH = REPO_PATH+"/"+DATA_PATHS.get('components')
 ENTITY_KEY = 'components' # Clé dans la hiérarchie YAML
 
 def load_data():

@@ -2,8 +2,9 @@ import yaml
 import os
 from config import DATA_PATHS
 
+REPO_PATH = os.environ.get('REPO_PATH')
 # Chemin du répertoire racine des applications
-ROOT_PATH = DATA_PATHS.get('applications_root')
+ROOT_PATH = REPO_PATH+"/"+DATA_PATHS.get('applications_root')
 
 def _find_file_path(name, namespace):
     """
