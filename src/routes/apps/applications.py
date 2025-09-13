@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify, render_template
 
 # 🎯 Importez correctement tous les services nécessaires
 # Make sure to import the services you need here.
-from ..services.apps import applications_service, components_service, substitutes_service, ingress_annotations_service
+from services.apps import applications_service, components_service, substitutes_service, ingress_annotations_service
 
 applications_bp = Blueprint('applications', __name__)
 

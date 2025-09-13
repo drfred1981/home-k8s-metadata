@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, render_template
 # Importer le blueprint (assurez-vous d'avoir le __init__.py qui définit components_bp)
 
-from ..services.apps import components_service
+from services.apps import components_service
 
 components_bp = Blueprint('components', __name__)
 
