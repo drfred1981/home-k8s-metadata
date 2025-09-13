@@ -12,41 +12,29 @@ VERBOSITY_LEVELS = {
     'CRITICAL': logging.CRITICAL
 }
 
+# Remplacez votre fonction setup_logging existante par celle-ci
 def setup_logging(app, log_level='INFO'):
     """
-    Configure le logger pour l'application Flask.
-    
-    Args:
-        app: L'instance de l'application Flask.
-        log_level (str): Le niveau de verbosité par défaut ('INFO', 'DEBUG', etc.).
+    Configure le logger de l'application Flask pour s'intégrer avec Gunicorn.
     """
-    # S'assurer que le répertoire des logs existe
-    log_dir = 'logs'
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
+    # Si le logger est déjà configuré (c'est le cas avec Gunicorn), on ne fait rien
+    if app.logger.handlers:
+        return
 
-    # Définir le niveau de log par défaut
-    level = VERBOSITY_LEVELS.get(log_level.upper(), logging.INFO)
-    app.logger.setLevel(level)
+    # Création d'un handler qui écrit dans la sortie standard
+    handler = logging.StreamHandler(sys.stdout)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    
+    # Définition du niveau de log de l'application
+    app.logger.setLevel(log_level)
+    handler.setLevel(log_level)
+    
+    # Ajout du handler au logger de l'application
+    app.logger.addHandler(handler)
 
-    # Format du message de log
-    formatter = logging.Formatter(
-        '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
-    )
-
-    # Gestionnaire pour la sortie console
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(formatter)
-    app.logger.addHandler(console_handler)
-
-    # Gestionnaire pour le fichier de log (rotation des fichiers)
-    file_handler = RotatingFileHandler(
-        os.path.join(log_dir, 'app.log'),
-        maxBytes=1024 * 1024 * 10,  # 10 Mo
-        backupCount=5
-    )
-    file_handler.setFormatter(formatter)
-    app.logger.addHandler(file_handler)
-
-    # Empêcher le logger de Flask d'afficher deux fois les messages
-    app.logger.propagate = False
+    # Optionnel mais recommandé : configurer le logger racine
+    # pour que tous les logs (y compris ceux des librairies) soient capturés
+    root_logger = logging.getLogger()
+    root_logger.addHandler(handler)
+    root_logger.setLevel(log_level)

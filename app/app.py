@@ -1,6 +1,6 @@
 # backend/app.py
 
-from flask import Flask, render_template
+from flask import Flask, render_template, current_app
 from typing import List, Dict, Optional
 import git 
 import os
@@ -38,23 +38,25 @@ def create_app():
     """
     repo_url = os.environ.get('REPO_URL')
     repo_path = os.environ.get('REPO_PATH')
+    current_app.logger.info(f"repo_url: {repo_url}")
+    current_app.logger.info(f"repo_path: {repo_path}")
     if not repo_url or not repo_path:
-        print("Les variables d'environnement REPO_URL ou REPO_PATH ne sont pas définies.")
+        current_app.logger.error("Les variables d'environnement REPO_URL ou REPO_PATH ne sont pas définies.")
         return
 
     # Vérifie si le chemin d'accès existe déjà
     if os.path.exists(repo_path):
-        print(f"Le dépôt existe déjà à l'emplacement {repo_path}")
+        current_app.logger.error(f"Le dépôt existe déjà à l'emplacement {repo_path}")
     else:
-        print(f"Clonage du dépôt depuis {repo_url} vers {repo_path}")
+        current_app.logger.info(f"Clonage du dépôt depuis {repo_url} vers {repo_path}")
         try:
             # Crée le répertoire parent si nécessaire
             os.makedirs(os.path.dirname(repo_path), exist_ok=True)
             # Clone le dépôt
             git.Repo.clone_from(repo_url, repo_path)
-            print("Clonage réussi.")
+            current_app.logger.info("Clonage réussi.")
         except git.GitCommandError as e:
-            print(f"Erreur lors du clonage du dépôt : {e}")
+            current_app.logger.rror(f"Erreur lors du clonage du dépôt : {e}")
 
     @app.route('/')
     def index():
