@@ -41,5 +41,6 @@ def create_app():
 if __name__ == '__main__':
     # La configuration est maintenant dans un module à part (config.py)
     # et n'a pas besoin d'être passée directement ici.
+    print("I'm starting web server")
     app = create_app()
     app.run(debug=True)
