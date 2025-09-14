@@ -546,7 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     filterNameInput.addEventListener('input', applyFilters);
     filterNamespaceSelect.addEventListener('change', applyFilters); // 🎯 Écouteur pour le nouveau filtre
-    filterBaseeSelect.addEventListener('change', applyFilters); // 🎯 Écouteur pour le nouveau filtre
+    filterBaseSelect.addEventListener('change', applyFilters); // 🎯 Écouteur pour le nouveau filtre
     filterActiveSelect.addEventListener('change', applyFilters);
     filterDependenciesInput.addEventListener('input', applyFilters);
 
