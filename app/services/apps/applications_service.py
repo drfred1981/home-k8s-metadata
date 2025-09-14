@@ -6,12 +6,12 @@ REPO_PATH = os.environ.get('REPO_PATH')
 # Chemin du répertoire racine des applications
 ROOT_PATH = REPO_PATH+"/"+DATA_PATHS.get('applications_root')
 
-def _find_file_path(name, namespace):
+def _find_file_path(base, name, namespace):
     """
     Trouve le chemin complet du fichier YAML pour une application.
     Le chemin est construit à partir du namespace.
     """
-    filename = f"apps_{namespace}_{name}.yaml"
+    filename = f"{base}_{namespace}_{name}.yaml"
     return os.path.join(ROOT_PATH, namespace, filename)
 
 
@@ -58,9 +58,10 @@ def save_data(data):
         # Cas de création
         namespace = data.get('namespace')
         name = data.get('name')
-        if not namespace or not name:
-            raise ValueError("Le namespace et le nom sont requis pour la sauvegarde.")
-        file_path = _find_file_path(name, namespace)
+        base = data.get('base')
+        if not namespace or not name or not base:
+            raise ValueError("Le namespace, la base et le nom sont requis pour la sauvegarde.")
+        file_path = _find_file_path(base, name, namespace)
     else:
         file_path = data['full_path']
         del data['full_path'] # Nettoyer la clé temporaire
@@ -123,14 +124,11 @@ def create_application(new_app_data):
     all_apps = load_data()
     if any(app['name'] == name and app['namespace'] == namespace for app in all_apps):
         return None # Application existante
-
-    # Ajouter le champ 'base'
-    new_app_data['base'] = 'apps'
-    
+   
     save_data(new_app_data)
     return new_app_data
 
-def update_application(current_name, current_namespace, updated_data):
+def update_application(current_base, current_name, current_namespace, updated_data):
     """
     Met à jour une application existante.
     Si le nom ou le namespace est modifié, le fichier sera déplacé.
@@ -160,7 +158,7 @@ def update_application(current_name, current_namespace, updated_data):
 
     # Si le nom ou le namespace a changé, il faut supprimer l'ancien fichier
     if new_name != current_name or new_namespace != current_namespace:
-        old_file_path = _find_file_path(current_name, current_namespace)
+        old_file_path = _find_file_path(current_base, current_name, current_namespace)
         if os.path.exists(old_file_path):
             os.remove(old_file_path)
             # On peut aussi tenter de supprimer le répertoire si il est vide
@@ -170,12 +168,12 @@ def update_application(current_name, current_namespace, updated_data):
                 pass # Le répertoire n'était pas vide, on ne le supprime pas
 
     return app_to_update
-
-def delete_application(name, namespace):
+base
+def delete_application(base, name, namespace):
     """
     Supprime une application par son nom et son namespace.
     """
-    file_path = _find_file_path(name, namespace)
+    file_path = _find_file_path(base, name, namespace)
 
     if not os.path.exists(file_path):
         return False

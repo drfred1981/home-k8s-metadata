@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Références aux éléments du formulaire de base
     const originalAppNameInput = document.getElementById('originalAppName');
     const originalAppNamespaceInput = document.getElementById('originalAppNamespace');
+    const originalAppBaseInput =  document.getElementById('base');
     const nameInput = document.getElementById('name');
     const namespaceInput = document.getElementById('namespace');
     const activeInput = document.getElementById('active');
@@ -48,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const filterNameInput = document.getElementById('filter-name');
     const filterNamespaceSelect = document.getElementById('filter-namespace'); // 🎯 Référence au nouveau filtre
+    const filterBaseSelect = document.getElementById('filter-base');
     const filterActiveSelect = document.getElementById('filter-active');
     const filterDependenciesInput = document.getElementById('filter-dependencies');
 
@@ -246,6 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
             allApplications = data;
             
             populateNamespaceFilter(allApplications); // 🎯 Remplir le filtre de namespace
+            populateBaseFilter(allApplications);
             applyFilters();
         } catch (error) {
             console.error("Failed to fetch applications:", error);
@@ -270,10 +273,24 @@ document.addEventListener('DOMContentLoaded', () => {
             filterNamespaceSelect.appendChild(option);
         });
     };
+     // 🎯 Nouvelle fonction pour remplir le sélecteur de namespace
+    const populateBaseFilter = (applications) => {
+        const bases = new Set();
+        applications.forEach(app => bases.add(app.base));
+        
+        const sortedBases = Array.from(base).sort();
+        sortedBases.forEach(ns => {
+            const option = document.createElement('option');
+            option.value = ns;
+            option.textContent = ns;
+            filterBaseSelect.appendChild(option);
+        });
+    };
 
     const applyFilters = () => {
         const nameFilter = filterNameInput.value.toLowerCase();
         const namespaceFilter = filterNamespaceSelect.value;
+        const baseFilter = filterBaseSelect.value;
         const activeFilter = filterActiveSelect.value;
         const dependenciesFilter = filterDependenciesInput.value.toLowerCase();
 
@@ -281,11 +298,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const matchesName = app.name.toLowerCase().includes(nameFilter);
             // 🎯 Logique de filtrage par namespace
             const matchesNamespace = namespaceFilter === '' || app.namespace.toLowerCase().includes(namespaceFilter.toLowerCase());
+            const matchesBase = baseFilter === '' || app.base.toLowerCase().includes(aseFilter.toLowerCase());
             const matchesActive = activeFilter === '' || String(app.active) === activeFilter;
             const matchesDependencies = dependenciesFilter === '' || 
                                         (app.dependsOn && app.dependsOn.some(dep => dep.name.toLowerCase().includes(dependenciesFilter)));
             
-            return matchesName && matchesNamespace && matchesActive && matchesDependencies;
+            return matchesName && matchesNamespace && matchesActive && matchesDependencies && matchesBase;
         });
 
         renderTable(filteredApps);
@@ -301,6 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const row = tableBody.insertRow();
             row.dataset.name = app.name;
             row.dataset.namespace = app.namespace;
+            row.dataset.base = app.base;
             
             const componentsList = (app.components || []).map(c => c.path || c.nom).join(', ');
             const dependsOnList = (app.dependsOn || []).map(d => `${d.name} (${d.namespace})`).join(', ');
@@ -308,6 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
             row.innerHTML = `
                 <td>${app.name}</td>
                 <td>${app.namespace}</td>
+                <td>${app.base}</td>
                 <td>${app.active ? 'Oui' : 'Non'}</td>
                 <td>${componentsList}</td>
                 <td>${dependsOnList}</td>
@@ -324,6 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const originalName = originalAppNameInput.value;
         const originalNamespace = originalAppNamespaceInput.value;
+        const originalBase = originalAppBaseInput.value;
         
         const components = Array.from(componentsSelect.options)
             .filter(opt => opt.selected)
@@ -383,10 +404,11 @@ document.addEventListener('DOMContentLoaded', () => {
         let url = API_URL_BASE;
         let method = 'POST';
 
-        if (originalName && originalNamespace) {
+        if (originalName && originalNamespace && originalBase) {
             const encodedNamespace = encodeURIComponent(originalNamespace);
             const encodedName = encodeURIComponent(originalName);
-            url = `${API_URL_BASE}/${encodedNamespace}/${encodedName}`;
+            const encodeBase = encodeURIComponent(originalBase);
+            url = `${API_URL_BASE}/${encodedNamespace}/${encodedName}/${encodeBase}`;
             method = 'PUT';
         }
 
@@ -413,11 +435,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const target = e.target;
         const name = target.dataset.name;
         const namespace = target.dataset.namespace;
+        const base = target.dataset.base;
 
         if (target.classList.contains('delete-btn')) {
             const encodedNamespace = encodeURIComponent(namespace);
             const encodedName = encodeURIComponent(name);
-            const url = `${API_URL_BASE}/${encodedNamespace}/${encodedName}`;
+            const encodedBase = encodeURIComponent(base);
+            const url = `${API_URL_BASE}/${encodedNamespace}/${encodedName}/${encodedBase}`;
             
             if (confirm(`Voulez-vous vraiment supprimer l'application ${name} dans le namespace ${namespace} ?`)) {
                 const response = await fetch(url, { method: 'DELETE' });
@@ -522,6 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     filterNameInput.addEventListener('input', applyFilters);
     filterNamespaceSelect.addEventListener('change', applyFilters); // 🎯 Écouteur pour le nouveau filtre
+    filterBaseeSelect.addEventListener('change', applyFilters); // 🎯 Écouteur pour le nouveau filtre
     filterActiveSelect.addEventListener('change', applyFilters);
     filterDependenciesInput.addEventListener('input', applyFilters);
 

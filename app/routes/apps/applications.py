@@ -88,12 +88,12 @@ def create_application():
         return jsonify({'error': str(e)}), 400
 
 # API pour mettre à jour une application
-@applications_bp.route('/api/applications/<path:namespace>/<path:name>', methods=['PUT'])
-def update_application(name, namespace):
+@applications_bp.route('/api/applications/<path:namespace>/<path:name>/<path:base>', methods=['PUT'])
+def update_application(base, name, namespace):
     updated_app_data = request.json
-    print(updated_app_data)
+    
     try:
-        updated_app = applications_service.update_application(name, namespace, updated_app_data)
+        updated_app = applications_service.update_application(base, name, namespace, updated_app_data)
        
         if updated_app:
             return jsonify(updated_app)
@@ -102,9 +102,9 @@ def update_application(name, namespace):
         return jsonify({'error': str(e)}), 400
 
 # API pour supprimer une application
-@applications_bp.route('/api/applications/<path:namespace>/<path:name>', methods=['DELETE'])
-def delete_application(name, namespace):
-    if applications_service.delete_application(name, namespace):
+@applications_bp.route('/api/applications/<path:namespace>/<path:name>/<path:base>', methods=['DELETE'])
+def delete_application(base, name, namespace):
+    if applications_service.delete_application(base, name, namespace):
         return '', 204
     return jsonify({'error': 'Application not found'}), 404
 
