@@ -168,7 +168,7 @@ def update_application(current_base, current_name, current_namespace, updated_da
                 pass # Le répertoire n'était pas vide, on ne le supprime pas
 
     return app_to_update
-base
+
 def delete_application(base, name, namespace):
     """
     Supprime une application par son nom et son namespace.
