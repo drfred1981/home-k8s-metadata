@@ -12,7 +12,7 @@ def _find_file_path(base, name, namespace):
     Le chemin est construit à partir du namespace.
     """
     filename = f"{base}_{namespace}_{name}.yaml"
-    return os.path.join(ROOT_PATH, namespace, filename)
+    return os.path.join(ROOT_PATH, base, namespace, filename)
 
 
 def load_data():
