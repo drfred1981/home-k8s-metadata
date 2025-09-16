@@ -385,8 +385,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 annotations: ingressAnnotations
             },
             helm: {
-                name: helmNameInput.value.trim() || undefined,
-                healthChecks: helmHealthChecksInput.checked || undefined
+                name: helmNameInput.value.trim() || "",
+                healthChecks: helmHealthChecksInput.checked || false
             },
             substitute: substitutes,
             components: components,
@@ -397,9 +397,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (Object.values(newAppData.ingress).every(x => x === undefined || (typeof x === 'object' && Object.keys(x).length === 0))) {
             delete newAppData.ingress;
         }
-        if (Object.values(newAppData.helm).every(x => x === undefined || (typeof x === 'object' && Object.keys(x).length === 0))) {
-            delete newAppData.helm;
-        }
+        
         
         let url = API_URL_BASE;
         let method = 'POST';
