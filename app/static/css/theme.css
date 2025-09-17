@@ -1,0 +1,43 @@
+/* static/css/theme.css */
+
+/* Variables de couleur par défaut (mode clair) */
+:root {
+    --bg-color: #f8f9fa;
+    --text-color: #212529;
+    --card-bg: #ffffff;
+    --card-border: #dee2e6;
+    --btn-primary: #0d6efd;
+    --btn-primary-text: #ffffff;
+}
+
+/* Règle pour le mode sombre */
+body.dark-mode {
+    --bg-color: #212529;
+    --text-color: #f8f9fa;
+    --card-bg: #343a40;
+    --card-border: #495057;
+    --btn-primary: #007bff;
+    --btn-primary-text: #ffffff;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.card {
+    background-color: var(--card-bg);
+    border-color: var(--card-border);
+    color: var(--text-color);
+}
+
+.btn-primary {
+    background-color: var(--btn-primary);
+    color: var(--btn-primary-text);
+}
+
+/* Assurez-vous d'avoir Font Awesome pour les icônes */
+.fas {
+    margin-right: 5px;
+}

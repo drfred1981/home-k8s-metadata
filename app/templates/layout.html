@@ -47,6 +47,20 @@
                 </div>
             </div>
         </nav>
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <ul class="navbar-nav ms-auto">
+            <li class="nav-item">
+                <button id="theme-toggle" class="btn btn-dark nav-link">
+                    <i class="fas fa-moon"></i> Mode sombre
+                </button>
+            </li>
+        </ul>
+    </div>
+</nav>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+<script src="{{ url_for('static', filename='js/theme-toggle.js') }}"></script>
     </header>
 
     <main class="container my-5">
