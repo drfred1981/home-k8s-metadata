@@ -2,6 +2,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const API_URL = '/apps/api/applications';
     const DASHBOARD_ICONS_TREE = 'https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/tree.json';
     const DASHBOARD_ICONS_CDN = 'https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/';
+    const HOMARR_ICONS_TREE = 'https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/tree.json';
+    const HOMARR_ICONS_CDN = 'https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/';
+    const SIMPLE_ICONS_DATA = 'https://cdn.jsdelivr.net/npm/simple-icons/data/simple-icons.json';
+    const SIMPLE_ICONS_CDN = 'https://cdn.jsdelivr.net/npm/simple-icons/icons/';
     const SELFHST_ICONS_CDN = 'https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/';
 
     const container = document.getElementById('appsContainer');
@@ -23,10 +27,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const customIconPreview = document.getElementById('customIconPreview');
     const customIconConfirm = document.getElementById('customIconConfirm');
 
+    // Homarr icons elements
+    const homarrIconSearch = document.getElementById('homarrIconSearch');
+    const homarrIconGrid = document.getElementById('homarrIconGrid');
+
+    // Simple Icons elements
+    const simpleIconSearch = document.getElementById('simpleIconSearch');
+    const simpleIconGrid = document.getElementById('simpleIconGrid');
+
+    // Edit modal elements
+    const editAnnotationsModal = new bootstrap.Modal(document.getElementById('editAnnotationsModal'));
+    const editModalIcon = document.getElementById('editModalIcon');
+    const editModalTitle = document.getElementById('editModalTitle');
+    const editModalMeta = document.getElementById('editModalMeta');
+    const editModalBody = document.getElementById('editModalBody');
+    const editModalSaveBtn = document.getElementById('editModalSaveBtn');
+
     let allApps = [];
     let currentView = 'grid'; // 'grid' or 'list'
     let dashboardIconsList = []; // Cached list of dashboard icon names
+    let homarrIconsList = []; // Cached list of homarr icon names
+    let simpleIconsList = []; // Cached list of simple icons {title, slug, hex}
     let currentIconTarget = null; // {appId, inputElement}
+    let currentEditApp = null; // App currently being edited in modal
 
     // ===== Resolve icon URL for display =====
     const resolveIconUrl = (iconValue) => {
@@ -101,37 +124,32 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <span class="ie-card-chevron">&#9654;</span>
         `;
-        header.addEventListener('click', () => toggleCard(card));
+        header.addEventListener('click', () => {
+            if (currentView === 'grid') {
+                openEditModal(app);
+            } else {
+                toggleCard(card);
+            }
+        });
 
-        // Body (expandable)
+        // Body (expandable, only used in list mode)
         const body = document.createElement('div');
         body.className = 'ie-card-body';
 
+        const bodyInner = buildAnnotationFields(app, annotations);
+        body.appendChild(bodyInner);
+        card.appendChild(header);
+        card.appendChild(body);
+
+        return card;
+    };
+
+    // ===== Build annotation fields (reused for both inline and modal) =====
+    const buildAnnotationFields = (app, annotations, isModal = false) => {
         const bodyInner = document.createElement('div');
         bodyInner.className = 'ie-card-body-inner';
 
-        // Annotation fields
         const annotationKeys = Object.keys(annotations);
-        const allKnownKeys = [
-            'gethomepage.dev/enabled',
-            'gethomepage.dev/name',
-            'gethomepage.dev/description',
-            'gethomepage.dev/group',
-            'gethomepage.dev/icon',
-            'gethomepage.dev/pod-selector',
-            'gethomepage.dev/widget.type',
-            'gethomepage.dev/widget.url',
-            'gethomepage.dev/widget.key',
-            'gethomepage.dev/widget.username',
-            'gethomepage.dev/widget.password',
-            'hajimari.io/appName',
-            'hajimari.io/icon',
-            'hajimari.io/instance',
-            'hajimari.io/enable',
-            'hajimari.io/group',
-        ];
-
-        // Show existing annotations + any missing known keys that exist
         const keysToShow = [...new Set([...annotationKeys])];
 
         keysToShow.forEach(key => {
@@ -163,25 +181,52 @@ document.addEventListener('DOMContentLoaded', () => {
             bodyInner.appendChild(row);
         });
 
-        // Save button
-        const saveDiv = document.createElement('div');
-        saveDiv.className = 'ie-save-btn';
-        const saveBtn = document.createElement('button');
-        saveBtn.type = 'button';
-        saveBtn.className = 'btn btn-primary btn-sm';
-        saveBtn.textContent = 'Sauvegarder';
-        saveBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            saveAnnotations(app, bodyInner, saveBtn);
-        });
-        saveDiv.appendChild(saveBtn);
-        bodyInner.appendChild(saveDiv);
+        // Save button (only for inline / list mode)
+        if (!isModal) {
+            const saveDiv = document.createElement('div');
+            saveDiv.className = 'ie-save-btn';
+            const saveBtn = document.createElement('button');
+            saveBtn.type = 'button';
+            saveBtn.className = 'btn btn-primary btn-sm';
+            saveBtn.textContent = 'Sauvegarder';
+            saveBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                saveAnnotations(app, bodyInner, saveBtn);
+            });
+            saveDiv.appendChild(saveBtn);
+            bodyInner.appendChild(saveDiv);
+        }
 
-        body.appendChild(bodyInner);
-        card.appendChild(header);
-        card.appendChild(body);
+        return bodyInner;
+    };
 
-        return card;
+    // ===== Open edit modal (grid mode) =====
+    const openEditModal = (app) => {
+        currentEditApp = app;
+        const annotations = app.ingress?.annotations || {};
+        const iconValue = annotations['gethomepage.dev/icon'] || '';
+        const iconUrl = resolveIconUrl(iconValue);
+        const appDisplayName = annotations['gethomepage.dev/name'] || `${app.name}-${app.subapp_name}`;
+        const group = annotations['gethomepage.dev/group'] || '';
+
+        // Set modal header
+        editModalIcon.innerHTML = iconUrl
+            ? `<img src="${iconUrl}" alt="" onerror="this.parentElement.innerHTML='<span class=\\'ie-icon-placeholder\\'>?</span>'">`
+            : '<span class="ie-icon-placeholder">?</span>';
+        editModalTitle.textContent = appDisplayName;
+        editModalMeta.textContent = `${app.namespace}${group ? ' / ' + group : ''}`;
+
+        // Build annotation fields in modal body
+        editModalBody.innerHTML = '';
+        const fieldsContainer = buildAnnotationFields(app, annotations, true);
+        editModalBody.appendChild(fieldsContainer);
+
+        // Wire up save button
+        editModalSaveBtn.onclick = () => {
+            saveAnnotations(app, fieldsContainer, editModalSaveBtn, true);
+        };
+
+        editAnnotationsModal.show();
     };
 
     // ===== Toggle card expand/collapse =====
@@ -199,10 +244,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ===== View Toggle =====
+    const updateExpandButtons = () => {
+        const hidden = currentView === 'grid';
+        expandAllBtn.style.display = hidden ? 'none' : '';
+        collapseAllBtn.style.display = hidden ? 'none' : '';
+    };
+
     viewGridBtn.addEventListener('click', () => {
         currentView = 'grid';
         viewGridBtn.classList.add('active');
         viewListBtn.classList.remove('active');
+        updateExpandButtons();
         render();
     });
 
@@ -210,14 +262,18 @@ document.addEventListener('DOMContentLoaded', () => {
         currentView = 'list';
         viewListBtn.classList.add('active');
         viewGridBtn.classList.remove('active');
+        updateExpandButtons();
         render();
     });
+
+    // Initial state
+    updateExpandButtons();
 
     // ===== Search =====
     searchInput.addEventListener('input', render);
 
     // ===== Save annotations for an app =====
-    const saveAnnotations = async (app, bodyInner, saveBtn) => {
+    const saveAnnotations = async (app, bodyInner, saveBtn, fromModal = false) => {
         const inputs = bodyInner.querySelectorAll('input[data-annotation-key]');
         const newAnnotations = {};
         inputs.forEach(input => {
@@ -265,18 +321,23 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (response.ok) {
-                saveBtn.textContent = 'Sauvegardé !';
-                saveBtn.className = 'btn btn-success btn-sm';
                 // Update the local cache
                 const idx = allApps.findIndex(a => a.name === app.name && a.namespace === app.namespace && a.subapp_name === app.subapp_name);
                 if (idx !== -1) {
                     allApps[idx].ingress.annotations = newAnnotations;
                 }
-                setTimeout(() => {
-                    saveBtn.textContent = 'Sauvegarder';
-                    saveBtn.className = 'btn btn-primary btn-sm';
-                    saveBtn.disabled = false;
-                }, 2000);
+                if (fromModal) {
+                    editAnnotationsModal.hide();
+                    render(); // Re-render cards to reflect changes
+                } else {
+                    saveBtn.textContent = 'Sauvegardé !';
+                    saveBtn.className = 'btn btn-success btn-sm';
+                    setTimeout(() => {
+                        saveBtn.textContent = 'Sauvegarder';
+                        saveBtn.className = 'btn btn-primary btn-sm';
+                        saveBtn.disabled = false;
+                    }, 2000);
+                }
             } else {
                 const err = await response.json();
                 alert(`Erreur: ${err.error || response.statusText}`);
@@ -456,6 +517,143 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return variants;
     };
+
+    // ===== Homarr Labs Dashboard Icons =====
+    const loadHomarrIcons = async () => {
+        if (homarrIconsList.length > 0) {
+            renderHomarrIcons('');
+            return;
+        }
+
+        homarrIconGrid.innerHTML = '<div class="text-center text-muted p-3">Chargement...</div>';
+
+        try {
+            const response = await fetch(HOMARR_ICONS_TREE);
+            const tree = await response.json();
+            // tree has {png: ["name.png", ...], svg: [...]}
+            if (tree.png && Array.isArray(tree.png)) {
+                homarrIconsList = tree.png.map(n => n.replace('.png', '')).sort();
+            } else {
+                homarrIconsList = extractIconNames(tree);
+            }
+            renderHomarrIcons('');
+        } catch (error) {
+            console.error('Failed to load Homarr icons:', error);
+            homarrIconGrid.innerHTML = '<div class="text-center text-danger p-3">Erreur de chargement</div>';
+        }
+    };
+
+    const renderHomarrIcons = (query) => {
+        const filtered = query
+            ? homarrIconsList.filter(name => name.toLowerCase().includes(query.toLowerCase()))
+            : homarrIconsList;
+
+        const limited = filtered.slice(0, 200);
+        homarrIconGrid.innerHTML = '';
+
+        if (limited.length === 0) {
+            homarrIconGrid.innerHTML = '<div class="text-center text-muted p-3">Aucune icône trouvée</div>';
+            return;
+        }
+
+        limited.forEach(name => {
+            const item = document.createElement('div');
+            item.className = 'ie-icon-item';
+            item.innerHTML = `
+                <img src="${HOMARR_ICONS_CDN}${name}.png" alt="${name}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22/>'">
+                <span title="${name}">${name}</span>
+            `;
+            item.addEventListener('click', () => {
+                selectIcon(`${HOMARR_ICONS_CDN}${name}.png`);
+            });
+            homarrIconGrid.appendChild(item);
+        });
+
+        if (filtered.length > 200) {
+            const more = document.createElement('div');
+            more.className = 'text-center text-muted p-2';
+            more.textContent = `${filtered.length - 200} icônes supplémentaires masquées. Affinez votre recherche.`;
+            homarrIconGrid.appendChild(more);
+        }
+    };
+
+    homarrIconSearch.addEventListener('input', () => {
+        renderHomarrIcons(homarrIconSearch.value);
+    });
+
+    // Load homarr icons when tab is shown
+    document.querySelector('[data-bs-target="#tabHomarrIcons"]').addEventListener('shown.bs.tab', () => {
+        loadHomarrIcons();
+    });
+
+    // ===== Simple Icons =====
+    const loadSimpleIcons = async () => {
+        if (simpleIconsList.length > 0) {
+            renderSimpleIcons('');
+            return;
+        }
+
+        simpleIconGrid.innerHTML = '<div class="text-center text-muted p-3">Chargement...</div>';
+
+        try {
+            const response = await fetch(SIMPLE_ICONS_DATA);
+            const data = await response.json();
+            simpleIconsList = data.map(icon => ({
+                title: icon.title,
+                slug: icon.slug,
+                hex: icon.hex
+            })).sort((a, b) => a.title.localeCompare(b.title));
+            renderSimpleIcons('');
+        } catch (error) {
+            console.error('Failed to load Simple Icons:', error);
+            simpleIconGrid.innerHTML = '<div class="text-center text-danger p-3">Erreur de chargement</div>';
+        }
+    };
+
+    const renderSimpleIcons = (query) => {
+        const filtered = query
+            ? simpleIconsList.filter(icon => icon.title.toLowerCase().includes(query.toLowerCase()) || icon.slug.toLowerCase().includes(query.toLowerCase()))
+            : simpleIconsList;
+
+        const limited = filtered.slice(0, 200);
+        simpleIconGrid.innerHTML = '';
+
+        if (limited.length === 0) {
+            simpleIconGrid.innerHTML = '<div class="text-center text-muted p-3">Aucune icône trouvée</div>';
+            return;
+        }
+
+        limited.forEach(icon => {
+            const iconUrl = `${SIMPLE_ICONS_CDN}${icon.slug}.svg`;
+            const item = document.createElement('div');
+            item.className = 'ie-icon-item ie-simple-icon';
+            item.innerHTML = `
+                <img src="${iconUrl}" alt="${icon.title}" loading="lazy" style="filter: none;" onerror="this.parentElement.style.display='none'">
+                <span title="${icon.title}">${icon.title}</span>
+            `;
+            item.style.setProperty('--si-color', `#${icon.hex}`);
+            item.addEventListener('click', () => {
+                selectIcon(iconUrl);
+            });
+            simpleIconGrid.appendChild(item);
+        });
+
+        if (filtered.length > 200) {
+            const more = document.createElement('div');
+            more.className = 'text-center text-muted p-2';
+            more.textContent = `${filtered.length - 200} icônes supplémentaires masquées. Affinez votre recherche.`;
+            simpleIconGrid.appendChild(more);
+        }
+    };
+
+    simpleIconSearch.addEventListener('input', () => {
+        renderSimpleIcons(simpleIconSearch.value);
+    });
+
+    // Load simple icons when tab is shown
+    document.querySelector('[data-bs-target="#tabSimpleIcons"]').addEventListener('shown.bs.tab', () => {
+        loadSimpleIcons();
+    });
 
     // ===== Custom URL =====
     customIconUrl.addEventListener('input', () => {

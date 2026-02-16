@@ -40,6 +40,30 @@
 <!-- Applications container -->
 <div id="appsContainer" class="ie-grid"></div>
 
+<!-- Edit Annotations Modal (for grid view) -->
+<div class="modal fade" id="editAnnotationsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="ie-icon-wrapper" id="editModalIcon"></div>
+                    <div>
+                        <h5 class="modal-title" id="editModalTitle">Annotations</h5>
+                        <small class="text-muted" id="editModalMeta"></small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="editModalBody">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <button type="button" class="btn btn-primary" id="editModalSaveBtn">Sauvegarder</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Icon Picker Modal -->
 <div class="modal fade ie-icon-modal" id="iconPickerModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -55,6 +79,12 @@
                         <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabDashboardIcons" type="button">Dashboard Icons</button>
                     </li>
                     <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabHomarrIcons" type="button">Homarr Icons</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabSimpleIcons" type="button">Simple Icons</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
                         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabSelfhst" type="button">selfh.st Icons</button>
                     </li>
                     <li class="nav-item" role="presentation">
@@ -63,10 +93,26 @@
                 </ul>
 
                 <div class="tab-content">
-                    <!-- Dashboard Icons Tab -->
+                    <!-- Dashboard Icons Tab (walkxcode) -->
                     <div class="tab-pane fade show active" id="tabDashboardIcons">
                         <input type="text" class="form-control ie-icon-search" id="dashboardIconSearch" placeholder="Rechercher une icône...">
                         <div class="ie-icon-grid" id="dashboardIconGrid">
+                            <div class="text-center text-muted p-3">Chargement des icônes...</div>
+                        </div>
+                    </div>
+
+                    <!-- Homarr Labs Dashboard Icons Tab -->
+                    <div class="tab-pane fade" id="tabHomarrIcons">
+                        <input type="text" class="form-control ie-icon-search" id="homarrIconSearch" placeholder="Rechercher une icône (10 000+ icônes)...">
+                        <div class="ie-icon-grid" id="homarrIconGrid">
+                            <div class="text-center text-muted p-3">Chargement des icônes...</div>
+                        </div>
+                    </div>
+
+                    <!-- Simple Icons Tab -->
+                    <div class="tab-pane fade" id="tabSimpleIcons">
+                        <input type="text" class="form-control ie-icon-search" id="simpleIconSearch" placeholder="Rechercher un logo (Docker, GitHub, Netflix...)...">
+                        <div class="ie-icon-grid" id="simpleIconGrid">
                             <div class="text-center text-muted p-3">Chargement des icônes...</div>
                         </div>
                     </div>

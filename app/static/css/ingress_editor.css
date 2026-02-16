@@ -140,7 +140,7 @@
     display: none;
 }
 
-/* ===== Card Body (expandable panel) ===== */
+/* ===== Card Body (expandable panel, list mode only) ===== */
 .ie-card-body {
     max-height: 0;
     overflow: hidden;
@@ -151,6 +151,11 @@
 .ie-card.expanded .ie-card-body {
     max-height: 800px;
     border-top: 1px solid var(--card-border, #dee2e6);
+}
+
+/* Hide card body in grid mode (uses modal instead) */
+.ie-grid .ie-card-body {
+    display: none;
 }
 
 .ie-card-body-inner {
@@ -254,6 +259,12 @@
     max-width: 100%;
 }
 
+/* ===== Simple Icons (SVG monochrome) ===== */
+.ie-simple-icon img {
+    width: 32px;
+    height: 32px;
+}
+
 /* ===== Custom URL preview ===== */
 .ie-url-preview {
     display: flex;
@@ -283,6 +294,24 @@
 .ie-count {
     font-size: 0.85rem;
     color: #6c757d;
+}
+
+/* ===== Edit Annotations Modal ===== */
+#editAnnotationsModal .modal-header {
+    gap: 0.5rem;
+}
+
+#editAnnotationsModal .ie-icon-wrapper {
+    width: 48px;
+    height: 48px;
+}
+
+#editAnnotationsModal .ie-card-body-inner {
+    padding: 0;
+}
+
+#editAnnotationsModal .ie-annotation-row label {
+    min-width: 180px;
 }
 
 /* ===== Responsive ===== */
