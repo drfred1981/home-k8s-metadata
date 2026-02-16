@@ -1,0 +1,105 @@
+{% extends "layout.html" %}
+
+{% block title %}Éditeur d'Ingress Annotations{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ingress_editor.css') }}">
+
+<h1 class="mb-4">Éditeur d'Ingress Annotations</h1>
+
+<!-- Toolbar -->
+<div class="ie-toolbar">
+    <div class="btn-group" role="group">
+        <button type="button" class="btn btn-outline-primary active" id="viewGrid" title="Vue Grille">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5v-3zm8 0A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5v-3zm-8 8A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5v-3zm8 0A1.5 1.5 0 0 1 10.5 9h3a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 13.5v-3z"/>
+            </svg>
+        </button>
+        <button type="button" class="btn btn-outline-primary" id="viewList" title="Vue Liste">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/>
+            </svg>
+        </button>
+    </div>
+
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="expandAllBtn">Tout déplier</button>
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="collapseAllBtn">Tout replier</button>
+
+    <input type="text" class="form-control form-control-sm ie-search" id="searchInput" placeholder="Rechercher une application...">
+
+    <span class="ie-count" id="appCount"></span>
+</div>
+
+<!-- Loading -->
+<div class="ie-loading" id="loadingSpinner">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Chargement...</span>
+    </div>
+</div>
+
+<!-- Applications container -->
+<div id="appsContainer" class="ie-grid"></div>
+
+<!-- Icon Picker Modal -->
+<div class="modal fade ie-icon-modal" id="iconPickerModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Sélectionner une icône</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Tabs -->
+                <ul class="nav nav-tabs mb-3" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabDashboardIcons" type="button">Dashboard Icons</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabSelfhst" type="button">selfh.st Icons</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabCustomUrl" type="button">URL personnalisée</button>
+                    </li>
+                </ul>
+
+                <div class="tab-content">
+                    <!-- Dashboard Icons Tab -->
+                    <div class="tab-pane fade show active" id="tabDashboardIcons">
+                        <input type="text" class="form-control ie-icon-search" id="dashboardIconSearch" placeholder="Rechercher une icône...">
+                        <div class="ie-icon-grid" id="dashboardIconGrid">
+                            <div class="text-center text-muted p-3">Chargement des icônes...</div>
+                        </div>
+                    </div>
+
+                    <!-- selfh.st Icons Tab -->
+                    <div class="tab-pane fade" id="tabSelfhst">
+                        <input type="text" class="form-control ie-icon-search" id="selfhstIconSearch" placeholder="Rechercher une icône (ex: sonarr, grafana, jellyfin)...">
+                        <div class="ie-icon-grid" id="selfhstIconGrid">
+                            <div class="text-center text-muted p-3">Tapez un nom pour rechercher</div>
+                        </div>
+                    </div>
+
+                    <!-- Custom URL Tab -->
+                    <div class="tab-pane fade" id="tabCustomUrl">
+                        <div class="mb-3">
+                            <label class="form-label">URL de l'icône :</label>
+                            <input type="url" class="form-control" id="customIconUrl" placeholder="https://example.com/icon.png">
+                        </div>
+                        <div class="ie-url-preview" id="customIconPreview">
+                            <span class="text-muted">Aperçu</span>
+                        </div>
+                        <div class="text-center">
+                            <button type="button" class="btn btn-primary btn-sm" id="customIconConfirm">Utiliser cette URL</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/apps/ingress_editor.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,300 @@
+/* ===== Toolbar ===== */
+.ie-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+
+.ie-toolbar .btn-group .btn {
+    min-width: 44px;
+}
+
+.ie-toolbar .btn-group .btn.active {
+    z-index: 1;
+}
+
+.ie-search {
+    flex: 1;
+    min-width: 200px;
+    max-width: 400px;
+}
+
+/* ===== Grid View ===== */
+.ie-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+/* ===== List View ===== */
+.ie-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.ie-list .ie-card {
+    border-radius: 0.375rem;
+}
+
+/* ===== Card (shared) ===== */
+.ie-card {
+    background: var(--card-bg, #fff);
+    border: 1px solid var(--card-border, #dee2e6);
+    border-radius: 0.5rem;
+    overflow: hidden;
+    transition: box-shadow 0.2s, border-color 0.2s;
+    cursor: pointer;
+}
+
+.ie-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    border-color: #0d6efd;
+}
+
+.ie-card.expanded {
+    border-color: #0d6efd;
+}
+
+/* ===== Card Header ===== */
+.ie-card-header {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    gap: 0.75rem;
+    user-select: none;
+}
+
+.ie-grid .ie-card-header {
+    flex-direction: column;
+    text-align: center;
+    padding: 1.25rem 1rem;
+}
+
+.ie-list .ie-card-header {
+    flex-direction: row;
+}
+
+/* ===== Icon ===== */
+.ie-icon-wrapper {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-color, #f8f9fa);
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.ie-grid .ie-icon-wrapper {
+    width: 64px;
+    height: 64px;
+}
+
+.ie-icon-wrapper img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.ie-icon-wrapper .ie-icon-placeholder {
+    font-size: 1.5rem;
+    color: #6c757d;
+}
+
+/* ===== Card Info ===== */
+.ie-card-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.ie-card-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-color, #212529);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ie-card-meta {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.ie-card-chevron {
+    transition: transform 0.2s;
+    color: #6c757d;
+    font-size: 0.8rem;
+}
+
+.ie-card.expanded .ie-card-chevron {
+    transform: rotate(90deg);
+}
+
+.ie-grid .ie-card-chevron {
+    display: none;
+}
+
+/* ===== Card Body (expandable panel) ===== */
+.ie-card-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease;
+    border-top: 0 solid transparent;
+}
+
+.ie-card.expanded .ie-card-body {
+    max-height: 800px;
+    border-top: 1px solid var(--card-border, #dee2e6);
+}
+
+.ie-card-body-inner {
+    padding: 1rem;
+}
+
+/* ===== Annotation Row ===== */
+.ie-annotation-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.ie-annotation-row label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #6c757d;
+    min-width: 160px;
+    flex-shrink: 0;
+    word-break: break-all;
+}
+
+.ie-annotation-row input {
+    flex: 1;
+    min-width: 0;
+}
+
+.ie-annotation-row .btn-icon-picker {
+    flex-shrink: 0;
+}
+
+/* ===== Save Button ===== */
+.ie-save-btn {
+    margin-top: 0.75rem;
+}
+
+.ie-save-btn .btn {
+    width: 100%;
+}
+
+/* ===== Status badge ===== */
+.ie-badge-ingress {
+    font-size: 0.7rem;
+    padding: 0.15em 0.45em;
+}
+
+/* ===== Icon Picker Modal ===== */
+.ie-icon-modal .modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.ie-icon-search {
+    margin-bottom: 1rem;
+}
+
+.ie-icon-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 0.5rem;
+    max-height: 50vh;
+    overflow-y: auto;
+}
+
+.ie-icon-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.5rem;
+    border: 2px solid transparent;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    text-align: center;
+}
+
+.ie-icon-item:hover {
+    border-color: #0d6efd;
+    background: rgba(13, 110, 253, 0.05);
+}
+
+.ie-icon-item.selected {
+    border-color: #0d6efd;
+    background: rgba(13, 110, 253, 0.1);
+}
+
+.ie-icon-item img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    margin-bottom: 0.25rem;
+}
+
+.ie-icon-item span {
+    font-size: 0.65rem;
+    color: #6c757d;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+/* ===== Custom URL preview ===== */
+.ie-url-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 80px;
+    border: 1px solid var(--card-border, #dee2e6);
+    border-radius: 0.5rem;
+    overflow: hidden;
+    margin: 1rem auto;
+}
+
+.ie-url-preview img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+/* ===== Loading ===== */
+.ie-loading {
+    text-align: center;
+    padding: 3rem;
+}
+
+/* ===== Count badge ===== */
+.ie-count {
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 576px) {
+    .ie-grid {
+        grid-template-columns: 1fr;
+    }
+    .ie-annotation-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .ie-annotation-row label {
+        min-width: unset;
+    }
+}

@@ -1,7 +1,5 @@
 from flask import Blueprint, request, jsonify, render_template
 
-# 🎯 Importez correctement tous les services nécessaires
-# Make sure to import the services you need here.
 from services.apps import applications_service, components_service, substitutes_service, ingress_annotations_service
 
 applications_bp = Blueprint('applications', __name__)
@@ -9,7 +7,6 @@ applications_bp = Blueprint('applications', __name__)
 @applications_bp.route('/global-graph')
 def global_dependency_graph_page():
     return render_template('apps/global_dependency_graph.html')
-
 
 
 @applications_bp.route('/api/applications/global-graph-data', methods=['GET'])
@@ -20,9 +17,9 @@ def get_global_graph_data():
     except Exception as e:
         print(f"Erreur lors de la génération du graphe global : {e}")
         return jsonify({'error': 'Erreur interne du serveur'}), 500
-        
 
-# Your route to display the applications page
+
+# Page d'affichage des applications
 @applications_bp.route('/applications')
 def applications_page():
     applications = applications_service.load_data()
@@ -36,6 +33,7 @@ def applications_page():
         substitutes=substitutes,
         ingress_annotations=ingress_annotations
     )
+
 @applications_bp.route('/api/applications/dependencies', methods=['POST'])
 def get_dependencies_graph():
     data = request.json
@@ -52,59 +50,58 @@ def get_dependencies_graph():
         return jsonify({'error': 'Nom et namespace de l\'application requis'}), 400
 
     try:
-        # The applications_service is now correctly defined here.
         graph_data = applications_service.get_dependency_tree(app_name, app_namespace, depth)
         return jsonify(graph_data)
     except Exception as e:
         print(f"Erreur lors de la génération du graphe de dépendances : {e}")
         return jsonify({'error': 'Erreur interne du serveur'}), 500
 
-# API pour obtenir toutes les applications
+# API pour obtenir toutes les applications (subapps aplaties)
 @applications_bp.route('/api/applications', methods=['GET'])
 def get_applications():
     data = applications_service.load_data()
     return jsonify(data)
 
-# Nouvelle API pour obtenir une seule application par son nom et namespace
-@applications_bp.route('/api/applications/<path:namespace>/<path:name>', methods=['GET'])
-def get_single_application(name, namespace):
+# API pour obtenir une seule subapp par son nom, namespace et subapp_name
+@applications_bp.route('/api/applications/<path:namespace>/<path:name>/<path:subapp_name>', methods=['GET'])
+def get_single_application(name, namespace, subapp_name):
     """
-    Récupère les données d'une application spécifique pour le formulaire de modification.
+    Récupère les données d'une subapp spécifique pour le formulaire de modification.
     """
-    app_data = applications_service.get_application(name, namespace)
+    app_data = applications_service.get_application(name, namespace, subapp_name)
     if app_data:
         return jsonify(app_data)
     return jsonify({'error': 'Application not found'}), 404
-# API pour créer une nouvelle application
+
+# API pour créer une nouvelle subapp
 @applications_bp.route('/api/applications', methods=['POST'])
 def create_application():
     new_app_data = request.json
     try:
         new_app = applications_service.create_application(new_app_data)
         if new_app is None:
-            return jsonify({'error': 'Application with this name and namespace already exists'}), 409
+            return jsonify({'error': 'Application with this name, namespace and subapp already exists'}), 409
         return jsonify(new_app), 201
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
 
-# API pour mettre à jour une application
-@applications_bp.route('/api/applications/<path:namespace>/<path:name>/<path:base>', methods=['PUT'])
-def update_application(base, name, namespace):
+# API pour mettre à jour une subapp
+@applications_bp.route('/api/applications/<path:namespace>/<path:name>/<path:base>/<path:subapp_name>', methods=['PUT'])
+def update_application(base, name, namespace, subapp_name):
     updated_app_data = request.json
-    
+
     try:
-        updated_app = applications_service.update_application(base, name, namespace, updated_app_data)
-       
+        updated_app = applications_service.update_application(base, name, namespace, subapp_name, updated_app_data)
+
         if updated_app:
             return jsonify(updated_app)
         return jsonify({'error': 'Application not found or new name/namespace already exists'}), 404
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
 
-# API pour supprimer une application
-@applications_bp.route('/api/applications/<path:namespace>/<path:name>/<path:base>', methods=['DELETE'])
-def delete_application(base, name, namespace):
-    if applications_service.delete_application(base, name, namespace):
+# API pour supprimer une subapp
+@applications_bp.route('/api/applications/<path:namespace>/<path:name>/<path:base>/<path:subapp_name>', methods=['DELETE'])
+def delete_application(base, name, namespace, subapp_name):
+    if applications_service.delete_application(base, name, namespace, subapp_name):
         return '', 204
     return jsonify({'error': 'Application not found'}), 404
-

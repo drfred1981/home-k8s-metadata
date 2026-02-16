@@ -8,8 +8,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const originalAppNameInput = document.getElementById('originalAppName');
     const originalAppNamespaceInput = document.getElementById('originalAppNamespace');
     const originalAppBaseInput =  document.getElementById('base');
+    const originalSubappNameInput = document.getElementById('originalSubappName');
     const nameInput = document.getElementById('name');
     const namespaceInput = document.getElementById('namespace');
+    const subappNameInput = document.getElementById('subappName');
     const activeInput = document.getElementById('active');
 
     // Références aux métadonnées
@@ -48,22 +50,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingSpinner = document.getElementById('loadingSpinner');
 
     const filterNameInput = document.getElementById('filter-name');
-    const filterNamespaceSelect = document.getElementById('filter-namespace'); // 🎯 Référence au nouveau filtre
+    const filterNamespaceSelect = document.getElementById('filter-namespace');
     const filterBaseSelect = document.getElementById('filter-base');
     const filterActiveSelect = document.getElementById('filter-active');
     const filterDependenciesInput = document.getElementById('filter-dependencies');
+    const filterSubappInput = document.getElementById('filter-subapp');
 
     let allApplications = []; // Cache pour stocker toutes les applications
-    
+
     const drawGraph = (graphData) => {
         const svg = d3.select("#dependencyGraph");
         const width = graphContainer.clientWidth;
         const height = graphContainer.clientHeight;
-        
+
         svg.attr("width", width).attr("height", height);
         svg.selectAll("*").remove();
 
-        // ✅ Seul le marqueur de flèche pour les dépendances est nécessaire
         svg.append("defs").append("marker")
             .attr("id", "arrowhead")
             .attr("viewBox", "0 -5 10 10")
@@ -73,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .attr("markerHeight", 8)
             .append("path").attr("d", "M 0,-5 L 10,0 L 0,5")
             .attr("fill", "#999");
-            
+
         const simulation = d3.forceSimulation(graphData.nodes)
             .force("link", d3.forceLink(graphData.links).id(d => d.id).distance(100))
             .force("charge", d3.forceManyBody().strength(-300))
@@ -85,9 +87,9 @@ document.addEventListener('DOMContentLoaded', () => {
             .data(graphData.links)
             .enter().append("line")
             .attr("stroke-width", 2)
-            .attr("stroke", "#999") // ✅ Couleur de lien unique
-            .attr("marker-end", "url(#arrowhead)"); // ✅ Marqueur unique
-        
+            .attr("stroke", "#999")
+            .attr("marker-end", "url(#arrowhead)");
+
         const node = svg.append("g")
             .attr("class", "nodes")
             .selectAll("g")
@@ -98,13 +100,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 .on("drag", dragged)
                 .on("end", dragended));
 
-        // ✅ La logique de rendu des nœuds est simplifiée
         node.append("path")
             .attr("d", d => {
                 if (d.type === 'source') {
-                    return `M -15 -15 L 15 -15 L 15 15 L -15 15 Z`; // Carré pour la source
+                    return `M -15 -15 L 15 -15 L 15 15 L -15 15 Z`;
                 } else {
-                    return d3.symbol().type(d3.symbolCircle).size(300)(); // Cercle pour les dépendances
+                    return d3.symbol().type(d3.symbolCircle).size(300)();
                 }
             })
             .attr("fill", d => {
@@ -114,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     return 'steelblue';
                 }
             });
-    // Add text labels
+
     node.append("text")
         .attr("x", 18)
         .attr("y", 5)
@@ -128,10 +129,10 @@ document.addEventListener('DOMContentLoaded', () => {
             .attr("y1", d => d.source.y)
             .attr("x2", d => d.target.x)
             .attr("y2", d => d.target.y);
-        
+
         node.attr("transform", d => `translate(${d.x},${d.y})`);
     });
-    
+
     function dragstarted(event, d) {
         if (!event.active) simulation.alphaTarget(0.3).restart();
         d.fx = d.x;
@@ -149,34 +150,36 @@ document.addEventListener('DOMContentLoaded', () => {
         d.fy = null;
     }
 };
-    
+
     // Fonction pour mettre à jour le graphe en fonction de l'application et de la profondeur
     const updateGraph = async () => {
         const appName = nameInput.value.trim();
         const appNamespace = namespaceInput.value.trim();
+        const subappName = subappNameInput.value.trim() || 'app';
         const depth = dependencyDepthSelect.value;
-        
+
         if (!appName || !appNamespace) {
             drawGraph({nodes: [], links: []});
             return;
         }
 
+        // Envoyer le nom combiné <name>-<subapp> pour le graphe de dépendances
         const response = await fetch(`${API_URL_BASE}/dependencies`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ app_name: appName, app_namespace: appNamespace, depth: depth === 'all' ? Infinity : parseInt(depth) })
+            body: JSON.stringify({ app_name: `${appName}-${subappName}`, app_namespace: appNamespace, depth: depth === 'all' ? Infinity : parseInt(depth) })
         });
-        
+
         if (response.ok) {
             const graphData = await response.json();
-            console.log(graphData)
             drawGraph(graphData);
         }
     };
 
-    // Écouteur pour les changements de nom, namespace et profondeur
+    // Écouteur pour les changements de nom, namespace, subapp et profondeur
     nameInput.addEventListener('input', updateGraph);
     namespaceInput.addEventListener('input', updateGraph);
+    subappNameInput.addEventListener('input', updateGraph);
     dependencyDepthSelect.addEventListener('change', updateGraph);
 
     // Fonction pour générer dynamiquement les champs de valeur d'annotations
@@ -246,25 +249,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(API_URL_BASE);
             const data = await response.json();
             allApplications = data;
-            
-            populateNamespaceFilter(allApplications); // 🎯 Remplir le filtre de namespace
+
+            populateNamespaceFilter(allApplications);
             populateBaseFilter(allApplications);
             applyFilters();
         } catch (error) {
             console.error("Failed to fetch applications:", error);
-            // Optionally, show an error message to the user here.
         } finally {
-            // 🎯 This is the key change: Hide the spinner regardless of the outcome.
             if (loadingSpinner) {
                 loadingSpinner.style.display = 'none';
             }
         }
     };
-     // 🎯 Nouvelle fonction pour remplir le sélecteur de namespace
+
     const populateNamespaceFilter = (applications) => {
         const namespaces = new Set();
         applications.forEach(app => namespaces.add(app.namespace));
-        
+
         const sortedNamespaces = Array.from(namespaces).sort();
         sortedNamespaces.forEach(ns => {
             const option = document.createElement('option');
@@ -273,16 +274,16 @@ document.addEventListener('DOMContentLoaded', () => {
             filterNamespaceSelect.appendChild(option);
         });
     };
-     // 🎯 Nouvelle fonction pour remplir le sélecteur de namespace
+
     const populateBaseFilter = (applications) => {
         const bases = new Set();
         applications.forEach(app => bases.add(app.base));
-        
-        const sortedBases = Array.from(base).sort();
-        sortedBases.forEach(ns => {
+
+        const sortedBases = Array.from(bases).sort();
+        sortedBases.forEach(b => {
             const option = document.createElement('option');
-            option.value = ns;
-            option.textContent = ns;
+            option.value = b;
+            option.textContent = b;
             filterBaseSelect.appendChild(option);
         });
     };
@@ -293,17 +294,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const baseFilter = filterBaseSelect.value;
         const activeFilter = filterActiveSelect.value;
         const dependenciesFilter = filterDependenciesInput.value.toLowerCase();
+        const subappFilter = filterSubappInput ? filterSubappInput.value.toLowerCase() : '';
 
         const filteredApps = allApplications.filter(app => {
             const matchesName = app.name.toLowerCase().includes(nameFilter);
-            // 🎯 Logique de filtrage par namespace
             const matchesNamespace = namespaceFilter === '' || app.namespace.toLowerCase().includes(namespaceFilter.toLowerCase());
-            const matchesBase = baseFilter === '' || app.base.toLowerCase().includes(aseFilter.toLowerCase());
+            const matchesBase = baseFilter === '' || app.base.toLowerCase().includes(baseFilter.toLowerCase());
             const matchesActive = activeFilter === '' || String(app.active) === activeFilter;
-            const matchesDependencies = dependenciesFilter === '' || 
+            const matchesDependencies = dependenciesFilter === '' ||
                                         (app.dependsOn && app.dependsOn.some(dep => dep.name.toLowerCase().includes(dependenciesFilter)));
-            
-            return matchesName && matchesNamespace && matchesActive && matchesDependencies && matchesBase;
+            const matchesSubapp = subappFilter === '' || app.subapp_name.toLowerCase().includes(subappFilter);
+
+            return matchesName && matchesNamespace && matchesActive && matchesDependencies && matchesBase && matchesSubapp;
         });
 
         renderTable(filteredApps);
@@ -312,7 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderTable = (data) => {
         tableBody.innerHTML = '';
         if (data.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="5" class="text-center">Aucune application ne correspond aux critères.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="7" class="text-center">Aucune application ne correspond aux critères.</td></tr>';
             return;
         }
         data.forEach(app => {
@@ -320,20 +322,21 @@ document.addEventListener('DOMContentLoaded', () => {
             row.dataset.name = app.name;
             row.dataset.namespace = app.namespace;
             row.dataset.base = app.base;
-            
+            row.dataset.subappName = app.subapp_name;
+
             const componentsList = (app.components || []).map(c => c.path || c.nom).join(', ');
             const dependsOnList = (app.dependsOn || []).map(d => `${d.name} (${d.namespace})`).join(', ');
 
             row.innerHTML = `
                 <td>${app.name}</td>
+                <td>${app.subapp_name}</td>
                 <td>${app.namespace}</td>
                 <td>${app.base}</td>
                 <td>${app.active ? 'Oui' : 'Non'}</td>
-                <td>${componentsList}</td>
                 <td>${dependsOnList}</td>
                 <td>
-                    <button class="btn btn-sm btn-info edit-btn" data-name="${app.name}" data-namespace="${app.namespace}">Modifier</button>
-                    <button class="btn btn-sm btn-danger delete-btn" data-name="${app.name}" data-namespace="${app.namespace}">Supprimer</button>
+                    <button class="btn btn-sm btn-info edit-btn" data-name="${app.name}" data-namespace="${app.namespace}" data-subapp-name="${app.subapp_name}">Modifier</button>
+                    <button class="btn btn-sm btn-danger delete-btn" data-name="${app.name}" data-namespace="${app.namespace}" data-base="${app.base}" data-subapp-name="${app.subapp_name}">Supprimer</button>
                 </td>
             `;
         });
@@ -341,11 +344,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
+
         const originalName = originalAppNameInput.value;
         const originalNamespace = originalAppNamespaceInput.value;
         const originalBase = originalAppBaseInput.value;
-        
+        const originalSubappName = originalSubappNameInput.value;
+
         const components = Array.from(componentsSelect.options)
             .filter(opt => opt.selected)
             .map(opt => ({ path: opt.value }));
@@ -371,6 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const newAppData = {
             name: nameInput.value.trim(),
             namespace: namespaceInput.value.trim(),
+            subapp_name: subappNameInput.value.trim() || 'app',
             active: activeInput.checked,
             base: baseInput.value.trim() || undefined,
             prune: pruneInput.checked,
@@ -397,16 +402,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (Object.values(newAppData.ingress).every(x => x === undefined || (typeof x === 'object' && Object.keys(x).length === 0))) {
             delete newAppData.ingress;
         }
-        
-        
+
+
         let url = API_URL_BASE;
         let method = 'POST';
 
-        if (originalName && originalNamespace && originalBase) {
+        if (originalName && originalNamespace && originalBase && originalSubappName) {
             const encodedNamespace = encodeURIComponent(originalNamespace);
             const encodedName = encodeURIComponent(originalName);
-            const encodeBase = encodeURIComponent(originalBase);
-            url = `${API_URL_BASE}/${encodedNamespace}/${encodedName}/${encodeBase}`;
+            const encodedBase = encodeURIComponent(originalBase);
+            const encodedSubappName = encodeURIComponent(originalSubappName);
+            url = `${API_URL_BASE}/${encodedNamespace}/${encodedName}/${encodedBase}/${encodedSubappName}`;
             method = 'PUT';
         }
 
@@ -415,13 +421,14 @@ document.addEventListener('DOMContentLoaded', () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(newAppData)
         });
-        
+
         if (response.ok) {
             form.reset();
             submitBtn.textContent = 'Ajouter';
             cancelBtn.style.display = 'none';
             originalAppNameInput.value = '';
             originalAppNamespaceInput.value = '';
+            originalSubappNameInput.value = '';
             fetchApplications();
         } else {
             const errorData = await response.json();
@@ -434,14 +441,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const name = target.dataset.name;
         const namespace = target.dataset.namespace;
         const base = target.dataset.base;
+        const subappName = target.dataset.subappName;
 
         if (target.classList.contains('delete-btn')) {
             const encodedNamespace = encodeURIComponent(namespace);
             const encodedName = encodeURIComponent(name);
             const encodedBase = encodeURIComponent(base);
-            const url = `${API_URL_BASE}/${encodedNamespace}/${encodedName}/${encodedBase}`;
-            
-            if (confirm(`Voulez-vous vraiment supprimer l'application ${name} dans le namespace ${namespace} ?`)) {
+            const encodedSubappName = encodeURIComponent(subappName);
+            const url = `${API_URL_BASE}/${encodedNamespace}/${encodedName}/${encodedBase}/${encodedSubappName}`;
+
+            if (confirm(`Voulez-vous vraiment supprimer la subapp "${subappName}" de l'application ${name} dans le namespace ${namespace} ?`)) {
                 const response = await fetch(url, { method: 'DELETE' });
                 if (response.ok) {
                     fetchApplications();
@@ -450,12 +459,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         } else if (target.classList.contains('edit-btn')) {
-            window.scrollTo(0, 0); 
-            
+            window.scrollTo(0, 0);
+
             const encodedNamespace = encodeURIComponent(namespace);
             const encodedName = encodeURIComponent(name);
-            const response = await fetch(`${API_URL_BASE}/${encodedNamespace}/${encodedName}`);
-            
+            const encodedSubappName = encodeURIComponent(subappName);
+            const response = await fetch(`${API_URL_BASE}/${encodedNamespace}/${encodedName}/${encodedSubappName}`);
+
             if (!response.ok) {
                 alert("Erreur lors de la récupération des données de l'application.");
                 return;
@@ -465,24 +475,26 @@ document.addEventListener('DOMContentLoaded', () => {
             // Remplir les champs du formulaire de base
             originalAppNameInput.value = appData.name;
             originalAppNamespaceInput.value = appData.namespace;
+            originalSubappNameInput.value = appData.subapp_name;
             nameInput.value = appData.name;
             namespaceInput.value = appData.namespace;
+            subappNameInput.value = appData.subapp_name;
             activeInput.checked = appData.active;
-            
+
             // Remplir les métadonnées
             baseInput.value = appData.base || '';
             pruneInput.checked = appData.prune || false;
             retryIntervalInput.value = appData.retryInterval || '';
             timeoutInput.value = appData.timeout || '';
             intervalInput.value = appData.interval || '';
-            
+
             // Remplir les champs Ingress
             if (appData.ingress) {
                 ingressClassNameInput.value = appData.ingress.className || '';
                 ingressSectionPathInput.value = appData.ingress.section_path || '';
                 ingressHelmreleaseFile.value = appData.ingress.helmrelease_file || '';
                 ingressActive.checked = appData.ingress.active || false;
-                
+
                 const annotationsInApp = Object.keys(appData.ingress.annotations || {});
                 Array.from(ingressAnnotationsKeysSelect.options).forEach(opt => {
                     opt.selected = annotationsInApp.includes(opt.value);
@@ -505,7 +517,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 helmNameInput.value = '';
                 helmHealthChecksInput.checked = false;
             }
-            
+
             // Pré-sélection des components
             const componentsInApp = (appData.components || []).map(c => c.path);
             Array.from(componentsSelect.options).forEach(opt => {
@@ -538,15 +550,17 @@ document.addEventListener('DOMContentLoaded', () => {
         cancelBtn.style.display = 'none';
         originalAppNameInput.value = '';
         originalAppNamespaceInput.value = '';
+        originalSubappNameInput.value = '';
         updateAnnotationsValueFields({});
         updateSubstituteValueFields({});
     });
 
     filterNameInput.addEventListener('input', applyFilters);
-    filterNamespaceSelect.addEventListener('change', applyFilters); // 🎯 Écouteur pour le nouveau filtre
-    filterBaseSelect.addEventListener('change', applyFilters); // 🎯 Écouteur pour le nouveau filtre
+    filterNamespaceSelect.addEventListener('change', applyFilters);
+    filterBaseSelect.addEventListener('change', applyFilters);
     filterActiveSelect.addEventListener('change', applyFilters);
     filterDependenciesInput.addEventListener('input', applyFilters);
+    if (filterSubappInput) filterSubappInput.addEventListener('input', applyFilters);
 
     fetchApplications();
 });
