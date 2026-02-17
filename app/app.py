@@ -17,6 +17,7 @@ from routes.apps.components import components_bp
 from routes.apps.substitutes import substitutes_bp
 from routes.apps.ingress_annotations import ingress_annotations_bp
 from routes.apps.ingress_editor import ingress_editor_bp
+from routes.apps.app_manager import app_manager_bp
 from routes.sync import sync_bp
 def create_app():
     """
@@ -34,6 +35,7 @@ def create_app():
     app.register_blueprint(sync_bp, url_prefix='/')
     app.register_blueprint(ingress_annotations_bp, url_prefix='/apps')
     app.register_blueprint(ingress_editor_bp, url_prefix='/apps')
+    app.register_blueprint(app_manager_bp, url_prefix='/apps')
     """
     Vérifie si le dépôt existe et le clone si ce n'est pas le cas.
     Utilise les variables d'environnement REPO_URL et REPO_PATH.

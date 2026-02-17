@@ -1,0 +1,75 @@
+{% extends "layout.html" %}
+
+{% block title %}Gestionnaire d'Applications{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app_manager.css') }}">
+
+<h1 class="mb-4">Gestionnaire d'Applications</h1>
+
+<!-- Toolbar -->
+<div class="am-toolbar">
+    <div class="btn-group" role="group">
+        <button type="button" class="btn btn-outline-primary active" id="viewGrid" title="Vue Grille">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5v-3zm8 0A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5v-3zm-8 8A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5v-3zm8 0A1.5 1.5 0 0 1 10.5 9h3a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 13.5v-3z"/>
+            </svg>
+        </button>
+        <button type="button" class="btn btn-outline-primary" id="viewList" title="Vue Liste">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/>
+            </svg>
+        </button>
+    </div>
+
+    <input type="text" class="form-control form-control-sm am-search" id="searchInput" placeholder="Rechercher une application...">
+
+    <span class="am-count" id="appCount"></span>
+</div>
+
+<!-- Loading -->
+<div class="am-loading" id="loadingSpinner">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Chargement...</span>
+    </div>
+</div>
+
+<!-- Applications container -->
+<div id="appsContainer" class="am-grid"></div>
+
+<!-- App Detail Modal -->
+<div class="modal fade" id="appDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="am-modal-icon" id="modalIcon"></div>
+                    <div>
+                        <h5 class="modal-title" id="modalTitle"></h5>
+                        <small class="text-muted" id="modalMeta"></small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <button type="button" class="btn btn-outline-primary" id="modalEditBtn">Editer</button>
+                <button type="button" class="btn btn-primary d-none" id="modalSaveBtn">Sauvegarder</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Datalists for suggestions -->
+<datalist id="knownComponentsList"></datalist>
+<datalist id="knownSubstitutesList"></datalist>
+<datalist id="knownAnnotationsList"></datalist>
+<datalist id="knownAppsList"></datalist>
+<datalist id="knownNamespacesList"></datalist>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/apps/app_manager.js') }}"></script>
+{% endblock %}
