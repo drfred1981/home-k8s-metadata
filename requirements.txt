@@ -1,5 +1,4 @@
 pyyaml
 flask
-pydantic
 gunicorn
 GitPython

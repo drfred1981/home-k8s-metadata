@@ -1,7 +1,6 @@
 # backend/logger.py
 import logging
-import os
-from logging.handlers import RotatingFileHandler
+import sys
 
 # Configuration des niveaux de verbosité
 VERBOSITY_LEVELS = {

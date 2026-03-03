@@ -1,8 +1,56 @@
 {% extends "layout.html" %}
 
-{% block title %}Accueil{% endblock %}
+{% block title %}Applications{% endblock %}
 
 {% block content %}
-    <h1>Bienvenue sur notre site</h1>
-    <p>Ceci est la page d'accueil. Ce contenu utilise les styles de Bootstrap.</p>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Applications</h1>
+    <span id="app-count" class="badge bg-secondary fs-6"></span>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <input type="text" id="search" class="form-control" placeholder="Rechercher...">
+    </div>
+    <div class="col-md-3">
+        <select id="filter-namespace" class="form-select">
+            <option value="">Tous les namespaces</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <select id="filter-group" class="form-select">
+            <option value="">Tous les groupes</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <select id="filter-active" class="form-select">
+            <option value="">Actives & inactives</option>
+            <option value="true" selected>Actives uniquement</option>
+            <option value="false">Inactives uniquement</option>
+        </select>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-hover align-middle" id="apps-table">
+        <thead class="table-dark">
+            <tr>
+                <th class="sortable" data-sort="name">Application</th>
+                <th class="sortable" data-sort="namespace">Namespace</th>
+                <th class="sortable" data-sort="version">Version</th>
+                <th class="sortable" data-sort="group">Groupe</th>
+                <th>Accès</th>
+                <th>Infra</th>
+                <th>Statut</th>
+            </tr>
+        </thead>
+        <tbody id="apps-body">
+            <tr><td colspan="7" class="text-center text-muted">Chargement...</td></tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 {% endblock %}
