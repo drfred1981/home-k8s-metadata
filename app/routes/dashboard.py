@@ -1,8 +1,8 @@
 from flask import Blueprint, jsonify, render_template, request
 import os
 
-from services.scanner import scan_apps, get_app_detail
-from services.writer import update_ks_yaml
+from services.scanner import scan_apps, get_app_detail, get_all_annotation_suggestions
+from services.writer import update_ks_yaml, update_helmrelease_annotations
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
@@ -46,5 +46,31 @@ def api_app_update(namespace, name):
     try:
         update_ks_yaml(REPO_PATH, namespace, name, subapp_full_name, filtered)
         return jsonify({"message": "Modifications enregistrees"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@dashboard_bp.route('/api/annotations/suggestions')
+def api_annotation_suggestions():
+    suggestions = get_all_annotation_suggestions(REPO_PATH)
+    return jsonify(suggestions)
+
+
+@dashboard_bp.route('/api/apps/<namespace>/<name>/annotations', methods=['PATCH'])
+def api_app_update_annotations(namespace, name):
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Corps JSON requis"}), 400
+
+    subapp_path = data.get("subapp_path")
+    ingress_name = data.get("ingress_name")
+    annotations = data.get("annotations")
+
+    if not subapp_path or not ingress_name or annotations is None:
+        return jsonify({"error": "subapp_path, ingress_name et annotations requis"}), 400
+
+    try:
+        update_helmrelease_annotations(REPO_PATH, namespace, name, subapp_path, ingress_name, annotations)
+        return jsonify({"message": "Annotations mises a jour"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500

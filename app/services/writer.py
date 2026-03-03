@@ -65,3 +65,43 @@ def update_ks_yaml(repo_path, namespace, app_name, subapp_full_name, changes):
         ryaml.dump_all(docs, f)
 
     logger.info("ks.yaml mis à jour: %s/%s subapp=%s", namespace, app_name, subapp_full_name)
+
+
+def update_helmrelease_annotations(repo_path, namespace, app_name, subapp_path, ingress_name, annotations):
+    """Met à jour les annotations ingress dans un helmrelease.yaml.
+
+    annotations: dict complet des annotations (remplace l'existant).
+    subapp_path: le spec.path du ks.yaml (ex: ./kubernetes/apps/services-it/karakeep/app)
+    """
+    if subapp_path.startswith("./"):
+        subapp_path = subapp_path[2:]
+    hr_path = os.path.join(repo_path, subapp_path, "helmrelease.yaml")
+    if not os.path.isfile(hr_path):
+        raise FileNotFoundError(f"helmrelease.yaml introuvable: {hr_path}")
+
+    ryaml = YAML()
+    ryaml.preserve_quotes = True
+
+    with open(hr_path, "r") as f:
+        data = ryaml.load(f)
+
+    if not data or data.get("kind") != "HelmRelease":
+        raise ValueError(f"Fichier invalide: {hr_path}")
+
+    values = data.get("spec", {}).get("values", {})
+    ingress = values.get("ingress", {})
+    ing_def = ingress.get(ingress_name)
+    if ing_def is None:
+        raise ValueError(f"Ingress '{ingress_name}' non trouvé dans {hr_path}")
+
+    # Remplacer les annotations
+    from ruamel.yaml.comments import CommentedMap
+    new_annots = CommentedMap()
+    for k in sorted(annotations.keys()):
+        new_annots[k] = annotations[k]
+    ing_def["annotations"] = new_annots
+
+    with open(hr_path, "w") as f:
+        ryaml.dump(data, f)
+
+    logger.info("Annotations mises à jour: %s/%s ingress=%s", namespace, app_name, ingress_name)

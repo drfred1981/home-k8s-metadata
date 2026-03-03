@@ -380,6 +380,40 @@ def _parse_helmrelease_detail(hr_path):
     }
 
 
+def get_all_annotation_suggestions(repo_path):
+    """Collecte toutes les clés et valeurs d'annotations ingress pour l'autocomplete."""
+    apps_dir = os.path.join(repo_path, APPS_ROOT)
+    if not os.path.isdir(apps_dir):
+        return {}
+
+    annotations = {}
+    for ns in os.listdir(apps_dir):
+        ns_dir = os.path.join(apps_dir, ns)
+        if not os.path.isdir(ns_dir):
+            continue
+        for app_name in os.listdir(ns_dir):
+            app_dir = os.path.join(ns_dir, app_name)
+            if not os.path.isdir(app_dir):
+                continue
+            for root, _dirs, files in os.walk(app_dir):
+                if "helmrelease.yaml" not in files:
+                    continue
+                data = _load_yaml(os.path.join(root, "helmrelease.yaml"))
+                if not data or data.get("kind") != "HelmRelease":
+                    continue
+                values = data.get("spec", {}).get("values", {})
+                for _ing_name, ing_def in values.get("ingress", {}).items():
+                    if not isinstance(ing_def, dict):
+                        continue
+                    for ak, av in ing_def.get("annotations", {}).items():
+                        if ak not in annotations:
+                            annotations[ak] = set()
+                        annotations[ak].add(str(av))
+
+    # Convertir sets en listes triées pour JSON
+    return {k: sorted(v) for k, v in sorted(annotations.items())}
+
+
 def _load_yaml(path):
     """Charge un fichier YAML (premier document)."""
     try:

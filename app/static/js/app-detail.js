@@ -18,6 +18,7 @@
 
     let currentApp = null;
     let editMode = false;
+    let annotationSuggestions = null; // {key: [values]} loaded once
 
     window.openAppDetail = function (namespace, name, displayName, iconSrc) {
         editMode = false;
@@ -39,9 +40,17 @@
 
         modal.show();
 
-        fetch(`/api/apps/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}`)
-            .then(r => { if (!r.ok) throw new Error(`Erreur ${r.status}`); return r.json(); })
-            .then(data => {
+        // Load suggestions once, then detail
+        const sugPromise = annotationSuggestions
+            ? Promise.resolve(annotationSuggestions)
+            : fetch('/api/annotations/suggestions').then(r => r.json()).then(s => { annotationSuggestions = s; return s; });
+
+        Promise.all([
+            fetch(`/api/apps/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}`)
+                .then(r => { if (!r.ok) throw new Error(`Erreur ${r.status}`); return r.json(); }),
+            sugPromise
+        ])
+            .then(([data]) => {
                 currentApp = data;
                 renderDetail(data);
                 modalLoading.classList.add('d-none');
@@ -210,21 +219,40 @@
             if (hr.ingress && Object.keys(hr.ingress).length > 0) {
                 html += sectionTitle('Ingress', 'fa-globe');
                 for (const [ingName, ingDef] of Object.entries(hr.ingress)) {
-                    html += '<div class="card mb-2"><div class="card-body p-2">';
+                    const saPath = (sa.ks || {}).path || '';
+                    html += `<div class="card mb-2 annot-card" data-subapp-path="${esc(saPath)}" data-ingress="${esc(ingName)}"><div class="card-body p-2">`;
                     html += `<strong>${esc(ingName)}</strong> &mdash; className: <code>${esc(ingDef.className || '-')}</code>`;
                     if (ingDef.hosts && ingDef.hosts.length) {
                         html += ` &mdash; Host: <code>${esc(ingDef.hosts[0].host || '-')}</code>`;
                     }
                     const annots = ingDef.annotations || {};
                     const annotKeys = Object.keys(annots);
+
+                    // Read-only view
+                    html += `<div class="annot-display">`;
                     if (annotKeys.length > 0) {
-                        html += `<details class="mt-1"><summary class="small text-muted">Annotations (${annotKeys.length})</summary>`;
+                        html += `<details class="mt-1" open><summary class="small text-muted">Annotations (${annotKeys.length})</summary>`;
                         html += '<table class="table table-sm mb-0"><tbody>';
                         for (const [ak, av] of Object.entries(annots)) {
                             html += `<tr><td class="text-nowrap"><small><code>${esc(ak)}</code></small></td><td><small>${esc(String(av))}</small></td></tr>`;
                         }
                         html += '</tbody></table></details>';
+                    } else {
+                        html += '<div class="small text-muted mt-1">Aucune annotation</div>';
                     }
+                    html += '</div>';
+
+                    // Edit view
+                    html += `<div class="annot-edit d-none mt-2">`;
+                    html += `<table class="table table-sm table-bordered mb-1"><thead><tr><th>Cle</th><th>Valeur</th><th style="width:40px"></th></tr></thead>`;
+                    html += `<tbody class="annot-rows">`;
+                    for (const [ak, av] of Object.entries(annots)) {
+                        html += annotationRow(ak, String(av));
+                    }
+                    html += `</tbody></table>`;
+                    html += `<button type="button" class="btn btn-sm btn-outline-primary annot-add-btn"><i class="fas fa-plus me-1"></i>Ajouter</button>`;
+                    html += '</div>';
+
                     html += '</div></div>';
                 }
             }
@@ -296,6 +324,8 @@
         cancelBtn.classList.toggle('d-none', !editing);
         modalEl.querySelectorAll('.sub-display, .ks-display').forEach(el => el.classList.toggle('d-none', editing));
         modalEl.querySelectorAll('.sub-edit, .ks-edit').forEach(el => el.classList.toggle('d-none', !editing));
+        modalEl.querySelectorAll('.annot-display').forEach(el => el.classList.toggle('d-none', editing));
+        modalEl.querySelectorAll('.annot-edit').forEach(el => el.classList.toggle('d-none', !editing));
     }
 
     // ── Save ──
@@ -349,6 +379,51 @@
             }
         }
 
+        // Save annotation changes
+        const annotCards = modalEl.querySelectorAll('.annot-card');
+        for (const card of annotCards) {
+            const subappPath = card.dataset.subappPath;
+            const ingressName = card.dataset.ingress;
+            if (!subappPath || !ingressName) continue;
+
+            const rows = card.querySelectorAll('.annot-rows tr');
+            const newAnnots = {};
+            for (const row of rows) {
+                const keyInput = row.querySelector('.annot-key');
+                const valInput = row.querySelector('.annot-val');
+                if (keyInput && valInput && keyInput.value.trim()) {
+                    newAnnots[keyInput.value.trim()] = valInput.value;
+                }
+            }
+
+            // Compare with original
+            const origCard = (currentApp.subapps || []).find(sa => (sa.ks || {}).path === subappPath);
+            const origAnnots = origCard?.helmrelease?.ingress?.[ingressName]?.annotations || {};
+            const origKeys = Object.keys(origAnnots).sort().join('|');
+            const origVals = Object.keys(origAnnots).sort().map(k => origAnnots[k]).join('|');
+            const newKeys = Object.keys(newAnnots).sort().join('|');
+            const newVals = Object.keys(newAnnots).sort().map(k => newAnnots[k]).join('|');
+            if (origKeys === newKeys && origVals === newVals) continue;
+
+            try {
+                const resp = await fetch(`/api/apps/${encodeURIComponent(currentApp.namespace)}/${encodeURIComponent(currentApp.name)}/annotations`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ subapp_path: subappPath, ingress_name: ingressName, annotations: newAnnots })
+                });
+                if (!resp.ok) {
+                    const err = await resp.json();
+                    showToast(`Erreur annotations: ${err.error}`, 'danger');
+                    saveBtn.disabled = false;
+                    return;
+                }
+            } catch (e) {
+                showToast(`Erreur reseau: ${e.message}`, 'danger');
+                saveBtn.disabled = false;
+                return;
+            }
+        }
+
         saveBtn.disabled = false;
         toggleEditUI(false);
         showToast('Modifications enregistrees. Allez sur Sync pour commiter et pousser.', 'success');
@@ -380,6 +455,129 @@
         const toastEl = document.getElementById(id);
         new bootstrap.Toast(toastEl, { delay: 5000 }).show();
         toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+    }
+
+    // ── Annotation row + autocomplete ──
+    function annotationRow(key, value) {
+        return `<tr>
+            <td><div class="position-relative">
+                <input type="text" class="form-control form-control-sm annot-key" value="${esc(key)}" autocomplete="off">
+                <div class="annot-suggest list-group position-absolute w-100 d-none" style="z-index:1050;max-height:200px;overflow-y:auto"></div>
+            </div></td>
+            <td><div class="position-relative">
+                <input type="text" class="form-control form-control-sm annot-val" value="${esc(value)}" autocomplete="off">
+                <div class="annot-suggest-val list-group position-absolute w-100 d-none" style="z-index:1050;max-height:200px;overflow-y:auto"></div>
+            </div></td>
+            <td><button type="button" class="btn btn-sm btn-outline-danger annot-del-btn"><i class="fas fa-trash"></i></button></td>
+        </tr>`;
+    }
+
+    // Event delegation for annotation editing
+    modalEl.addEventListener('click', (e) => {
+        // Delete row
+        const delBtn = e.target.closest('.annot-del-btn');
+        if (delBtn) {
+            delBtn.closest('tr').remove();
+            return;
+        }
+        // Add row
+        const addBtn = e.target.closest('.annot-add-btn');
+        if (addBtn) {
+            const tbody = addBtn.previousElementSibling.querySelector('.annot-rows');
+            tbody.insertAdjacentHTML('beforeend', annotationRow('', ''));
+            const newRow = tbody.lastElementChild;
+            newRow.querySelector('.annot-key').focus();
+            return;
+        }
+    });
+
+    // Autocomplete for annotation keys
+    modalEl.addEventListener('input', (e) => {
+        if (e.target.classList.contains('annot-key')) {
+            showKeySuggestions(e.target);
+        }
+        if (e.target.classList.contains('annot-val')) {
+            showValSuggestions(e.target);
+        }
+    });
+
+    modalEl.addEventListener('focusin', (e) => {
+        if (e.target.classList.contains('annot-key')) {
+            showKeySuggestions(e.target);
+        }
+        if (e.target.classList.contains('annot-val')) {
+            showValSuggestions(e.target);
+        }
+    });
+
+    modalEl.addEventListener('focusout', (e) => {
+        // Delay to allow click on suggestion
+        setTimeout(() => {
+            if (e.target.classList.contains('annot-key')) {
+                const dropdown = e.target.parentElement.querySelector('.annot-suggest');
+                if (dropdown) dropdown.classList.add('d-none');
+            }
+            if (e.target.classList.contains('annot-val')) {
+                const dropdown = e.target.parentElement.querySelector('.annot-suggest-val');
+                if (dropdown) dropdown.classList.add('d-none');
+            }
+        }, 200);
+    });
+
+    function showKeySuggestions(input) {
+        const dropdown = input.parentElement.querySelector('.annot-suggest');
+        if (!dropdown || !annotationSuggestions) return;
+        const q = input.value.toLowerCase();
+        const keys = Object.keys(annotationSuggestions).filter(k => k.toLowerCase().includes(q));
+        if (keys.length === 0 || (keys.length === 1 && keys[0] === input.value)) {
+            dropdown.classList.add('d-none');
+            return;
+        }
+        dropdown.innerHTML = keys.slice(0, 15).map(k =>
+            `<button type="button" class="list-group-item list-group-item-action py-1 px-2 small annot-suggest-item" data-value="${esc(k)}">${esc(k)}</button>`
+        ).join('');
+        dropdown.classList.remove('d-none');
+
+        dropdown.querySelectorAll('.annot-suggest-item').forEach(item => {
+            item.addEventListener('mousedown', (ev) => {
+                ev.preventDefault();
+                input.value = item.dataset.value;
+                dropdown.classList.add('d-none');
+                // Auto-fill value if there's only one common value
+                const vals = annotationSuggestions[item.dataset.value] || [];
+                const valInput = input.closest('tr').querySelector('.annot-val');
+                if (vals.length === 1 && valInput && !valInput.value) {
+                    valInput.value = vals[0];
+                }
+                input.dispatchEvent(new Event('input'));
+            });
+        });
+    }
+
+    function showValSuggestions(input) {
+        const dropdown = input.parentElement.querySelector('.annot-suggest-val');
+        if (!dropdown || !annotationSuggestions) return;
+        const keyInput = input.closest('tr').querySelector('.annot-key');
+        if (!keyInput) return;
+        const vals = annotationSuggestions[keyInput.value] || [];
+        const q = input.value.toLowerCase();
+        const filtered = vals.filter(v => v.toLowerCase().includes(q));
+        if (filtered.length === 0 || (filtered.length === 1 && filtered[0] === input.value)) {
+            dropdown.classList.add('d-none');
+            return;
+        }
+        dropdown.innerHTML = filtered.slice(0, 10).map(v =>
+            `<button type="button" class="list-group-item list-group-item-action py-1 px-2 small annot-suggest-val-item" data-value="${esc(v)}">${esc(v)}</button>`
+        ).join('');
+        dropdown.classList.remove('d-none');
+
+        dropdown.querySelectorAll('.annot-suggest-val-item').forEach(item => {
+            item.addEventListener('mousedown', (ev) => {
+                ev.preventDefault();
+                input.value = item.dataset.value;
+                dropdown.classList.add('d-none');
+            });
+        });
     }
 
     // ── Helpers ──
