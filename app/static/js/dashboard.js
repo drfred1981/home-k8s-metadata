@@ -83,7 +83,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         tbody.innerHTML = filtered.map(app => `
-            <tr class="${app.active ? '' : 'table-secondary'}">
+            <tr class="${app.active ? '' : 'table-secondary'}" style="cursor:pointer"
+                data-ns="${escHtml(app.namespace)}" data-name="${escHtml(app.name)}"
+                data-display="${escHtml(app.display_name || app.name)}" data-icon="${iconUrl(app)}">
                 <td>
                     ${iconHtml(app)}
                     <strong>${escHtml(app.display_name || app.name)}</strong>
@@ -99,10 +101,24 @@ document.addEventListener('DOMContentLoaded', () => {
         `).join('');
     }
 
-    function iconHtml(app) {
+    // Event delegation pour le clic sur les lignes
+    tbody.addEventListener('click', (e) => {
+        const tr = e.target.closest('tr[data-name]');
+        if (!tr) return;
+        if (window.openAppDetail) {
+            window.openAppDetail(tr.dataset.ns, tr.dataset.name, tr.dataset.display, tr.dataset.icon);
+        }
+    });
+
+    function iconUrl(app) {
         if (!app.icon) return '';
-        const src = app.icon.startsWith('http') ? app.icon :
+        return app.icon.startsWith('http') ? app.icon :
             `https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/${app.icon}`;
+    }
+
+    function iconHtml(app) {
+        const src = iconUrl(app);
+        if (!src) return '';
         return `<img src="${src}" width="20" height="20" class="me-2 rounded" onerror="this.style.display='none'">`;
     }
 

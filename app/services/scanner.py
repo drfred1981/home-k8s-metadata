@@ -203,6 +203,183 @@ def _extract_ingress(values, app_info):
     app_info["description"] = annotations.get("gethomepage.dev/description")
 
 
+def get_app_detail(repo_path, namespace, app_name):
+    """Retourne les infos détaillées d'une application, par sous-application."""
+    apps_dir = os.path.join(repo_path, APPS_ROOT)
+    ns_dir = os.path.join(apps_dir, namespace)
+    app_dir = os.path.join(ns_dir, app_name)
+
+    if not os.path.isdir(app_dir):
+        return None
+
+    active_apps = _get_active_apps(ns_dir)
+    result = {
+        "name": app_name,
+        "namespace": namespace,
+        "active": app_name in active_apps,
+        "subapps": [],
+    }
+
+    ks_path = os.path.join(app_dir, "ks.yaml")
+    if not os.path.isfile(ks_path):
+        return result
+
+    docs = _load_yaml_all(ks_path)
+    for doc in docs:
+        if not doc or doc.get("kind") != "Kustomization":
+            continue
+
+        spec = doc.get("spec", {})
+        meta_name = doc.get("metadata", {}).get("name", "")
+        subapp_name = meta_name.replace(app_name + "-", "")
+
+        components_raw = spec.get("components", [])
+        components = _extract_components(components_raw)
+
+        depends_on = []
+        for dep in spec.get("dependsOn", []):
+            depends_on.append({"name": dep.get("name", ""), "namespace": dep.get("namespace", "")})
+
+        health_checks = []
+        for hc in spec.get("healthChecks", []):
+            health_checks.append({
+                "kind": hc.get("kind", ""),
+                "name": hc.get("name", ""),
+                "namespace": hc.get("namespace", ""),
+            })
+
+        post_build = spec.get("postBuild", {})
+        substitute = {}
+        for k, v in post_build.get("substitute", {}).items():
+            substitute[k] = str(v) if v is not None else ""
+        substitute_from = []
+        for sf in post_build.get("substituteFrom", []):
+            substitute_from.append({"name": sf.get("name", ""), "kind": sf.get("kind", "")})
+
+        ks_detail = {
+            "interval": spec.get("interval"),
+            "retryInterval": spec.get("retryInterval"),
+            "timeout": spec.get("timeout"),
+            "wait": spec.get("wait"),
+            "prune": spec.get("prune"),
+            "path": spec.get("path"),
+            "components": components,
+            "components_raw": components_raw,
+            "depends_on": depends_on,
+            "health_checks": health_checks,
+            "substitute": substitute,
+            "substitute_from": substitute_from,
+        }
+
+        # Résoudre le helmrelease depuis spec.path
+        hr_detail = None
+        spec_path = spec.get("path", "")
+        if spec_path.startswith("./"):
+            spec_path = spec_path[2:]
+        hr_file = os.path.join(repo_path, spec_path, "helmrelease.yaml")
+        if os.path.isfile(hr_file):
+            hr_detail = _parse_helmrelease_detail(hr_file)
+
+        subapp = {
+            "name": subapp_name,
+            "full_name": meta_name,
+            "ks": ks_detail,
+            "helmrelease": hr_detail,
+        }
+        result["subapps"].append(subapp)
+
+    return result
+
+
+def _parse_helmrelease_detail(hr_path):
+    """Parse un helmrelease.yaml et retourne un dict détaillé."""
+    data = _load_yaml(hr_path)
+    if not data or data.get("kind") != "HelmRelease":
+        return None
+
+    spec = data.get("spec", {})
+    values = spec.get("values", {})
+
+    # Chart ref
+    chart_ref = spec.get("chartRef", {})
+    chart = {"kind": chart_ref.get("kind", ""), "name": chart_ref.get("name", "")}
+
+    # Controllers et containers
+    controllers = {}
+    for ctrl_name, ctrl in values.get("controllers", {}).items():
+        if not isinstance(ctrl, dict):
+            continue
+        containers = {}
+        for cnt_name, cnt in ctrl.get("containers", {}).items():
+            if not isinstance(cnt, dict):
+                continue
+            image_data = cnt.get("image", {})
+            image = ""
+            tag = ""
+            if isinstance(image_data, dict):
+                image = image_data.get("repository", "")
+                tag = str(image_data.get("tag", ""))
+                if "@" in tag:
+                    tag = tag.split("@")[0]
+
+            res = cnt.get("resources", {})
+            resources = {
+                "requests": res.get("requests", {}),
+                "limits": res.get("limits", {}),
+            } if res else None
+
+            # Env vars - montrer les clés, masquer les secrets
+            env_keys = []
+            for ek, ev in cnt.get("env", {}).items():
+                if isinstance(ev, dict) and "valueFrom" in ev:
+                    env_keys.append({"key": ek, "secret": True})
+                else:
+                    env_keys.append({"key": ek, "secret": False, "value": str(ev) if ev is not None else ""})
+
+            containers[cnt_name] = {
+                "image": image,
+                "tag": tag,
+                "resources": resources,
+                "env": env_keys,
+            }
+        controllers[ctrl_name] = {"containers": containers}
+
+    # Ingress - toutes les entrées
+    ingress = {}
+    for ing_name, ing_def in values.get("ingress", {}).items():
+        if not isinstance(ing_def, dict):
+            continue
+        hosts = []
+        for h in ing_def.get("hosts", []):
+            if isinstance(h, dict):
+                hosts.append({"host": h.get("host", "")})
+        ingress[ing_name] = {
+            "className": ing_def.get("className", ""),
+            "annotations": ing_def.get("annotations", {}),
+            "hosts": hosts,
+        }
+
+    # Persistence
+    persistence = {}
+    for p_name, p_def in values.get("persistence", {}).items():
+        if not isinstance(p_def, dict):
+            continue
+        persistence[p_name] = {
+            "type": p_def.get("type", ""),
+            "existingClaim": p_def.get("existingClaim", ""),
+            "size": p_def.get("size", ""),
+        }
+
+    return {
+        "name": data.get("metadata", {}).get("name", ""),
+        "interval": spec.get("interval"),
+        "chart": chart,
+        "controllers": controllers,
+        "ingress": ingress,
+        "persistence": persistence,
+    }
+
+
 def _load_yaml(path):
     """Charge un fichier YAML (premier document)."""
     try:

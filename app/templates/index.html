@@ -49,8 +49,48 @@
         </tbody>
     </table>
 </div>
+
+<!-- Modal Detail Application -->
+<div class="modal fade" id="appDetailModal" tabindex="-1" aria-labelledby="appDetailModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="d-flex align-items-center">
+          <img id="modal-icon" src="" width="28" height="28" class="me-2 rounded d-none" onerror="this.classList.add('d-none')">
+          <h5 class="modal-title" id="appDetailModalLabel">Application</h5>
+          <span id="modal-ns-badge" class="badge bg-primary ms-2"></span>
+          <span id="modal-active-badge" class="badge ms-1"></span>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body">
+        <div id="modal-loading" class="text-center py-5">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Chargement...</span>
+          </div>
+        </div>
+        <div id="modal-error" class="alert alert-danger d-none"></div>
+        <div id="modal-content" class="d-none">
+          <ul class="nav nav-tabs" id="subappTabs" role="tablist"></ul>
+          <div class="tab-content pt-3" id="subappTabContent"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+        <button type="button" class="btn btn-primary d-none" id="modal-edit-btn">
+          <i class="fas fa-edit"></i> Modifier
+        </button>
+        <button type="button" class="btn btn-success d-none" id="modal-save-btn">
+          <i class="fas fa-save"></i> Enregistrer
+        </button>
+        <button type="button" class="btn btn-outline-secondary d-none" id="modal-cancel-btn">Annuler</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script src="{{ url_for('static', filename='js/app-detail.js') }}"></script>
 {% endblock %}

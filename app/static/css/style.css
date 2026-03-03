@@ -10,3 +10,27 @@
 .badge {
     font-weight: 500;
 }
+
+/* Modal detail */
+#appDetailModal .table-sm td,
+#appDetailModal .table-sm th {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.85em;
+}
+
+#appDetailModal .nav-tabs .nav-link {
+    font-size: 0.9em;
+}
+
+#appDetailModal details summary {
+    cursor: pointer;
+}
+
+#appDetailModal .ks-edit,
+#appDetailModal .sub-edit {
+    max-width: 300px;
+}
+
+#appDetailModal .card-body code {
+    font-size: 0.85em;
+}
