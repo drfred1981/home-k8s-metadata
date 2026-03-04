@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, render_template, request
 import os
 
-from services.scanner import scan_apps, get_app_detail, get_all_annotation_suggestions
+from services.scanner import scan_apps, get_app_detail, get_all_annotation_suggestions, get_all_dependency_suggestions
 from services.writer import update_ks_yaml, update_helmrelease_annotations
 
 dashboard_bp = Blueprint('dashboard', __name__)
@@ -40,7 +40,7 @@ def api_app_update(namespace, name):
     if not subapp_full_name:
         return jsonify({"error": "subapp_full_name requis"}), 400
 
-    allowed = {"interval", "retryInterval", "timeout", "wait", "prune", "substitute"}
+    allowed = {"interval", "retryInterval", "timeout", "wait", "prune", "substitute", "dependsOn"}
     filtered = {k: v for k, v in changes.items() if k in allowed}
 
     try:
@@ -48,6 +48,12 @@ def api_app_update(namespace, name):
         return jsonify({"message": "Modifications enregistrees"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@dashboard_bp.route('/api/dependencies/suggestions')
+def api_dependency_suggestions():
+    suggestions = get_all_dependency_suggestions(REPO_PATH)
+    return jsonify(suggestions)
 
 
 @dashboard_bp.route('/api/annotations/suggestions')

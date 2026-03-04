@@ -19,6 +19,7 @@
     let currentApp = null;
     let editMode = false;
     let annotationSuggestions = null; // {key: [values]} loaded once
+    let dependencySuggestions = null; // [{name, namespace}] loaded once
 
     window.openAppDetail = function (namespace, name, displayName, iconSrc) {
         editMode = false;
@@ -41,14 +42,18 @@
         modal.show();
 
         // Load suggestions once, then detail
-        const sugPromise = annotationSuggestions
+        const annotPromise = annotationSuggestions
             ? Promise.resolve(annotationSuggestions)
             : fetch('/api/annotations/suggestions').then(r => r.json()).then(s => { annotationSuggestions = s; return s; });
+        const depPromise = dependencySuggestions
+            ? Promise.resolve(dependencySuggestions)
+            : fetch('/api/dependencies/suggestions').then(r => r.json()).then(s => { dependencySuggestions = s; return s; });
 
         Promise.all([
             fetch(`/api/apps/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}`)
                 .then(r => { if (!r.ok) throw new Error(`Erreur ${r.status}`); return r.json(); }),
-            sugPromise
+            annotPromise,
+            depPromise
         ])
             .then(([data]) => {
                 currentApp = data;
@@ -193,14 +198,34 @@
 
         // ── Dependances ──
         const deps = ks.depends_on || [];
+        html += sectionTitle('Dependances', 'fa-sitemap');
+        html += `<div class="dep-section" data-subapp="${esc(sa.full_name)}">`;
+
+        // Read-only view
+        html += '<div class="dep-display">';
         if (deps.length > 0) {
-            html += sectionTitle('Dependances', 'fa-sitemap');
             html += '<table class="table table-sm table-bordered mb-3"><thead><tr><th>Nom</th><th>Namespace</th></tr></thead><tbody>';
             for (const d of deps) {
                 html += `<tr><td>${esc(d.name)}</td><td><span class="badge bg-primary">${esc(d.namespace)}</span></td></tr>`;
             }
             html += '</tbody></table>';
+        } else {
+            html += '<div class="small text-muted mb-3">Aucune dependance</div>';
         }
+        html += '</div>';
+
+        // Edit view
+        html += '<div class="dep-edit d-none">';
+        html += '<table class="table table-sm table-bordered mb-1"><thead><tr><th>Nom</th><th>Namespace</th><th style="width:40px"></th></tr></thead>';
+        html += '<tbody class="dep-rows">';
+        for (const d of deps) {
+            html += depRow(d.name, d.namespace);
+        }
+        html += '</tbody></table>';
+        html += '<button type="button" class="btn btn-sm btn-outline-primary dep-add-btn"><i class="fas fa-plus me-1"></i>Ajouter</button>';
+        html += '</div>';
+
+        html += '</div>';
 
         // ── Health Checks ──
         const hcs = ks.health_checks || [];
@@ -326,6 +351,8 @@
         modalEl.querySelectorAll('.sub-edit, .ks-edit').forEach(el => el.classList.toggle('d-none', !editing));
         modalEl.querySelectorAll('.annot-display').forEach(el => el.classList.toggle('d-none', editing));
         modalEl.querySelectorAll('.annot-edit').forEach(el => el.classList.toggle('d-none', !editing));
+        modalEl.querySelectorAll('.dep-display').forEach(el => el.classList.toggle('d-none', editing));
+        modalEl.querySelectorAll('.dep-edit').forEach(el => el.classList.toggle('d-none', !editing));
     }
 
     // ── Save ──
@@ -357,6 +384,25 @@
                 const orig = sa.ks[field];
                 if (String(orig) !== val) changes[field] = val;
             });
+
+            // Dependencies
+            const depSection = modalEl.querySelector(`.dep-section[data-subapp="${sa.full_name}"]`);
+            if (depSection) {
+                const depRows = depSection.querySelectorAll('.dep-rows tr');
+                const newDeps = [];
+                for (const row of depRows) {
+                    const nameInput = row.querySelector('.dep-name');
+                    const nsInput = row.querySelector('.dep-ns');
+                    if (nameInput && nsInput && nameInput.value.trim()) {
+                        newDeps.push({ name: nameInput.value.trim(), namespace: nsInput.value.trim() });
+                    }
+                }
+                const origDeps = (sa.ks.depends_on || []).map(d => `${d.name}|${d.namespace}`).sort().join(',');
+                const newDepsStr = newDeps.map(d => `${d.name}|${d.namespace}`).sort().join(',');
+                if (origDeps !== newDepsStr) {
+                    changes.dependsOn = newDeps;
+                }
+            }
 
             if (Object.keys(changes).length === 0) continue;
 
@@ -457,6 +503,18 @@
         toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
     }
 
+    // ── Dependency row + autocomplete ──
+    function depRow(name, namespace) {
+        return `<tr>
+            <td><div class="position-relative">
+                <input type="text" class="form-control form-control-sm dep-name" value="${esc(name)}" autocomplete="off" placeholder="nom...">
+                <div class="dep-suggest list-group position-absolute w-100 d-none" style="z-index:1050;max-height:200px;overflow-y:auto"></div>
+            </div></td>
+            <td><input type="text" class="form-control form-control-sm dep-ns" value="${esc(namespace)}" autocomplete="off" placeholder="namespace..."></td>
+            <td><button type="button" class="btn btn-sm btn-outline-danger dep-del-btn"><i class="fas fa-trash"></i></button></td>
+        </tr>`;
+    }
+
     // ── Annotation row + autocomplete ──
     function annotationRow(key, value) {
         return `<tr>
@@ -472,15 +530,15 @@
         </tr>`;
     }
 
-    // Event delegation for annotation editing
+    // Event delegation for annotation & dependency editing
     modalEl.addEventListener('click', (e) => {
-        // Delete row
+        // Delete annotation row
         const delBtn = e.target.closest('.annot-del-btn');
         if (delBtn) {
             delBtn.closest('tr').remove();
             return;
         }
-        // Add row
+        // Add annotation row
         const addBtn = e.target.closest('.annot-add-btn');
         if (addBtn) {
             const tbody = addBtn.previousElementSibling.querySelector('.annot-rows');
@@ -489,25 +547,34 @@
             newRow.querySelector('.annot-key').focus();
             return;
         }
+        // Delete dependency row
+        const depDelBtn = e.target.closest('.dep-del-btn');
+        if (depDelBtn) {
+            depDelBtn.closest('tr').remove();
+            return;
+        }
+        // Add dependency row
+        const depAddBtn = e.target.closest('.dep-add-btn');
+        if (depAddBtn) {
+            const tbody = depAddBtn.previousElementSibling.querySelector('.dep-rows');
+            tbody.insertAdjacentHTML('beforeend', depRow('', ''));
+            const newRow = tbody.lastElementChild;
+            newRow.querySelector('.dep-name').focus();
+            return;
+        }
     });
 
-    // Autocomplete for annotation keys
+    // Autocomplete for annotation keys and dependency names
     modalEl.addEventListener('input', (e) => {
-        if (e.target.classList.contains('annot-key')) {
-            showKeySuggestions(e.target);
-        }
-        if (e.target.classList.contains('annot-val')) {
-            showValSuggestions(e.target);
-        }
+        if (e.target.classList.contains('annot-key')) showKeySuggestions(e.target);
+        if (e.target.classList.contains('annot-val')) showValSuggestions(e.target);
+        if (e.target.classList.contains('dep-name')) showDepSuggestions(e.target);
     });
 
     modalEl.addEventListener('focusin', (e) => {
-        if (e.target.classList.contains('annot-key')) {
-            showKeySuggestions(e.target);
-        }
-        if (e.target.classList.contains('annot-val')) {
-            showValSuggestions(e.target);
-        }
+        if (e.target.classList.contains('annot-key')) showKeySuggestions(e.target);
+        if (e.target.classList.contains('annot-val')) showValSuggestions(e.target);
+        if (e.target.classList.contains('dep-name')) showDepSuggestions(e.target);
     });
 
     modalEl.addEventListener('focusout', (e) => {
@@ -519,6 +586,10 @@
             }
             if (e.target.classList.contains('annot-val')) {
                 const dropdown = e.target.parentElement.querySelector('.annot-suggest-val');
+                if (dropdown) dropdown.classList.add('d-none');
+            }
+            if (e.target.classList.contains('dep-name')) {
+                const dropdown = e.target.parentElement.querySelector('.dep-suggest');
                 if (dropdown) dropdown.classList.add('d-none');
             }
         }, 200);
@@ -575,6 +646,33 @@
             item.addEventListener('mousedown', (ev) => {
                 ev.preventDefault();
                 input.value = item.dataset.value;
+                dropdown.classList.add('d-none');
+            });
+        });
+    }
+
+    function showDepSuggestions(input) {
+        const dropdown = input.parentElement.querySelector('.dep-suggest');
+        if (!dropdown || !dependencySuggestions) return;
+        const q = input.value.toLowerCase();
+        const filtered = dependencySuggestions.filter(d => d.name.toLowerCase().includes(q));
+        if (filtered.length === 0 || (filtered.length === 1 && filtered[0].name === input.value)) {
+            dropdown.classList.add('d-none');
+            return;
+        }
+        dropdown.innerHTML = filtered.slice(0, 15).map(d =>
+            `<button type="button" class="list-group-item list-group-item-action py-1 px-2 small dep-suggest-item" data-name="${esc(d.name)}" data-ns="${esc(d.namespace)}">
+                <span>${esc(d.name)}</span> <span class="badge bg-primary ms-1">${esc(d.namespace)}</span>
+            </button>`
+        ).join('');
+        dropdown.classList.remove('d-none');
+
+        dropdown.querySelectorAll('.dep-suggest-item').forEach(item => {
+            item.addEventListener('mousedown', (ev) => {
+                ev.preventDefault();
+                input.value = item.dataset.name;
+                const nsInput = input.closest('tr').querySelector('.dep-ns');
+                if (nsInput) nsInput.value = item.dataset.ns;
                 dropdown.classList.add('d-none');
             });
         });

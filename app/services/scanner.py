@@ -380,6 +380,37 @@ def _parse_helmrelease_detail(hr_path):
     }
 
 
+def get_all_dependency_suggestions(repo_path):
+    """Collecte tous les noms de Kustomization et namespaces pour l'autocomplete des dependances."""
+    apps_dir = os.path.join(repo_path, APPS_ROOT)
+    if not os.path.isdir(apps_dir):
+        return []
+
+    deps = []
+    for ns in os.listdir(apps_dir):
+        ns_dir = os.path.join(apps_dir, ns)
+        if not os.path.isdir(ns_dir):
+            continue
+        for app_name in os.listdir(ns_dir):
+            app_dir = os.path.join(ns_dir, app_name)
+            if not os.path.isdir(app_dir):
+                continue
+            ks_path = os.path.join(app_dir, "ks.yaml")
+            if not os.path.isfile(ks_path):
+                continue
+            docs = _load_yaml_all(ks_path)
+            for doc in docs:
+                if not doc or doc.get("kind") != "Kustomization":
+                    continue
+                name = doc.get("metadata", {}).get("name", "")
+                namespace = doc.get("metadata", {}).get("namespace", "")
+                if name:
+                    deps.append({"name": name, "namespace": namespace})
+
+    deps.sort(key=lambda d: (d["namespace"], d["name"]))
+    return deps
+
+
 def get_all_annotation_suggestions(repo_path):
     """Collecte toutes les clés et valeurs d'annotations ingress pour l'autocomplete."""
     apps_dir = os.path.join(repo_path, APPS_ROOT)
