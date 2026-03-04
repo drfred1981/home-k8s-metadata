@@ -7,6 +7,14 @@ logger = logging.getLogger(__name__)
 APPS_ROOT = "kubernetes/apps"
 
 
+def _make_yaml():
+    """Create a YAML instance configured for faithful round-trip editing."""
+    ryaml = YAML()
+    ryaml.preserve_quotes = True
+    ryaml.width = 4096  # Prevent line wrapping of long strings (sha256 tags, URLs)
+    return ryaml
+
+
 def update_ks_yaml(repo_path, namespace, app_name, subapp_full_name, changes):
     """Met à jour les champs d'un document Kustomization dans ks.yaml.
 
@@ -19,8 +27,7 @@ def update_ks_yaml(repo_path, namespace, app_name, subapp_full_name, changes):
     if not os.path.isfile(ks_path):
         raise FileNotFoundError(f"ks.yaml introuvable: {ks_path}")
 
-    ryaml = YAML()
-    ryaml.preserve_quotes = True
+    ryaml = _make_yaml()
 
     with open(ks_path, "r") as f:
         docs = list(ryaml.load_all(f))
@@ -107,8 +114,7 @@ def update_helmrelease_annotations(repo_path, namespace, app_name, subapp_path, 
     if not os.path.isfile(hr_path):
         raise FileNotFoundError(f"helmrelease.yaml introuvable: {hr_path}")
 
-    ryaml = YAML()
-    ryaml.preserve_quotes = True
+    ryaml = _make_yaml()
 
     with open(hr_path, "r") as f:
         data = ryaml.load(f)
