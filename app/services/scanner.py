@@ -411,6 +411,37 @@ def get_all_dependency_suggestions(repo_path):
     return deps
 
 
+def get_all_component_suggestions(repo_path):
+    """Collecte tous les composants utilisés dans les ks.yaml pour l'autocomplete."""
+    apps_dir = os.path.join(repo_path, APPS_ROOT)
+    if not os.path.isdir(apps_dir):
+        return []
+
+    components = set()
+    for ns in os.listdir(apps_dir):
+        ns_dir = os.path.join(apps_dir, ns)
+        if not os.path.isdir(ns_dir):
+            continue
+        for app_name in os.listdir(ns_dir):
+            app_dir = os.path.join(ns_dir, app_name)
+            if not os.path.isdir(app_dir):
+                continue
+            ks_path = os.path.join(app_dir, "ks.yaml")
+            if not os.path.isfile(ks_path):
+                continue
+            docs = _load_yaml_all(ks_path)
+            for doc in docs:
+                if not doc or doc.get("kind") != "Kustomization":
+                    continue
+                for comp in doc.get("spec", {}).get("components", []):
+                    # Extract short name: "../../../../components/gatus/external" → "gatus/external"
+                    match = re.search(r'components/(.+)$', comp)
+                    if match:
+                        components.add(match.group(1))
+
+    return sorted(components)
+
+
 def get_all_substitute_suggestions(repo_path):
     """Collecte toutes les clés et valeurs de substitutes pour l'autocomplete."""
     apps_dir = os.path.join(repo_path, APPS_ROOT)

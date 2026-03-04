@@ -56,6 +56,20 @@ def update_ks_yaml(repo_path, namespace, app_name, subapp_full_name, changes):
             for k, v in changes["substitute"].items():
                 spec["postBuild"]["substitute"][k] = v
 
+        # Replace components
+        if "components" in changes:
+            from ruamel.yaml.comments import CommentedSeq
+            new_comps = CommentedSeq()
+            for comp in changes["components"]:
+                # Ensure full path format
+                if not comp.startswith("../"):
+                    comp = "../../../../components/" + comp
+                new_comps.append(comp)
+            if new_comps:
+                spec["components"] = new_comps
+            elif "components" in spec:
+                del spec["components"]
+
         # Replace dependsOn
         if "dependsOn" in changes:
             from ruamel.yaml.comments import CommentedMap, CommentedSeq

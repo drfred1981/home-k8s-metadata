@@ -21,6 +21,7 @@
     let annotationSuggestions = null; // {key: [values]} loaded once
     let dependencySuggestions = null; // [{name, namespace}] loaded once
     let substituteSuggestions = null; // {key: [values]} loaded once
+    let componentSuggestions = null; // [string] loaded once
 
     window.openAppDetail = function (namespace, name, displayName, iconSrc) {
         editMode = false;
@@ -52,13 +53,17 @@
         const subPromise = substituteSuggestions
             ? Promise.resolve(substituteSuggestions)
             : fetch('/api/substitutes/suggestions').then(r => r.json()).then(s => { substituteSuggestions = s; return s; });
+        const compPromise = componentSuggestions
+            ? Promise.resolve(componentSuggestions)
+            : fetch('/api/components/suggestions').then(r => r.json()).then(s => { componentSuggestions = s; return s; });
 
         Promise.all([
             fetch(`/api/apps/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}`)
                 .then(r => { if (!r.ok) throw new Error(`Erreur ${r.status}`); return r.json(); }),
             annotPromise,
             depPromise,
-            subPromise
+            subPromise,
+            compPromise
         ])
             .then(([data]) => {
                 currentApp = data;
@@ -205,14 +210,34 @@
 
         // ── Composants ──
         const comps = ks.components || [];
+        html += sectionTitle('Composants', 'fa-puzzle-piece');
+        html += `<div class="comp-section" data-subapp="${esc(sa.full_name)}">`;
+
+        // Read-only view
+        html += '<div class="comp-display">';
         if (comps.length > 0) {
-            html += sectionTitle('Composants', 'fa-puzzle-piece');
             html += '<div class="mb-3">';
             for (const c of comps) {
                 html += `<span class="badge ${compColor(c)} me-1 mb-1">${esc(c)}</span>`;
             }
             html += '</div>';
+        } else {
+            html += '<div class="small text-muted mb-3">Aucun composant</div>';
         }
+        html += '</div>';
+
+        // Edit view
+        html += '<div class="comp-edit d-none">';
+        html += '<table class="table table-sm table-bordered mb-1"><thead><tr><th>Composant</th><th style="width:40px"></th></tr></thead>';
+        html += '<tbody class="comp-rows">';
+        for (const c of comps) {
+            html += compRow(c);
+        }
+        html += '</tbody></table>';
+        html += '<button type="button" class="btn btn-sm btn-outline-primary comp-add-btn"><i class="fas fa-plus me-1"></i>Ajouter</button>';
+        html += '</div>';
+
+        html += '</div>';
 
         // ── Dependances ──
         const deps = ks.depends_on || [];
@@ -373,6 +398,8 @@
         modalEl.querySelectorAll('.annot-edit').forEach(el => el.classList.toggle('d-none', !editing));
         modalEl.querySelectorAll('.dep-display').forEach(el => el.classList.toggle('d-none', editing));
         modalEl.querySelectorAll('.dep-edit').forEach(el => el.classList.toggle('d-none', !editing));
+        modalEl.querySelectorAll('.comp-display').forEach(el => el.classList.toggle('d-none', editing));
+        modalEl.querySelectorAll('.comp-edit').forEach(el => el.classList.toggle('d-none', !editing));
     }
 
     // ── Save ──
@@ -411,6 +438,24 @@
                 const orig = sa.ks[field];
                 if (String(orig) !== val) changes[field] = val;
             });
+
+            // Components
+            const compSection = modalEl.querySelector(`.comp-section[data-subapp="${sa.full_name}"]`);
+            if (compSection) {
+                const compRows = compSection.querySelectorAll('.comp-rows tr');
+                const newComps = [];
+                for (const row of compRows) {
+                    const nameInput = row.querySelector('.comp-name');
+                    if (nameInput && nameInput.value.trim()) {
+                        newComps.push(nameInput.value.trim());
+                    }
+                }
+                const origComps = (sa.ks.components || []).slice().sort().join(',');
+                const newCompsStr = newComps.slice().sort().join(',');
+                if (origComps !== newCompsStr) {
+                    changes.components = newComps;
+                }
+            }
 
             // Dependencies
             const depSection = modalEl.querySelector(`.dep-section[data-subapp="${sa.full_name}"]`);
@@ -530,6 +575,17 @@
         toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
     }
 
+    // ── Component row + autocomplete ──
+    function compRow(name) {
+        return `<tr>
+            <td><div class="position-relative">
+                <input type="text" class="form-control form-control-sm comp-name" value="${esc(name)}" autocomplete="off" placeholder="composant...">
+                <div class="comp-suggest list-group position-absolute w-100 d-none" style="z-index:1050;max-height:200px;overflow-y:auto"></div>
+            </div></td>
+            <td><button type="button" class="btn btn-sm btn-outline-danger comp-del-btn"><i class="fas fa-trash"></i></button></td>
+        </tr>`;
+    }
+
     // ── Substitute row + autocomplete ──
     function subsRow(key, value) {
         return `<tr>
@@ -589,6 +645,21 @@
             newRow.querySelector('.annot-key').focus();
             return;
         }
+        // Delete component row
+        const compDelBtn = e.target.closest('.comp-del-btn');
+        if (compDelBtn) {
+            compDelBtn.closest('tr').remove();
+            return;
+        }
+        // Add component row
+        const compAddBtn = e.target.closest('.comp-add-btn');
+        if (compAddBtn) {
+            const tbody = compAddBtn.previousElementSibling.querySelector('.comp-rows');
+            tbody.insertAdjacentHTML('beforeend', compRow(''));
+            const newRow = tbody.lastElementChild;
+            newRow.querySelector('.comp-name').focus();
+            return;
+        }
         // Delete substitute row
         const subsDelBtn = e.target.closest('.subs-del-btn');
         if (subsDelBtn) {
@@ -621,13 +692,14 @@
         }
     });
 
-    // Autocomplete for annotation keys, dependency names, substitute keys
+    // Autocomplete for annotation keys, dependency names, substitute keys, component names
     modalEl.addEventListener('input', (e) => {
         if (e.target.classList.contains('annot-key')) showKeySuggestions(e.target);
         if (e.target.classList.contains('annot-val')) showValSuggestions(e.target);
         if (e.target.classList.contains('dep-name')) showDepSuggestions(e.target);
         if (e.target.classList.contains('sub-key')) showSubKeySuggestions(e.target);
         if (e.target.classList.contains('sub-val')) showSubValSuggestions(e.target);
+        if (e.target.classList.contains('comp-name')) showCompSuggestions(e.target);
     });
 
     modalEl.addEventListener('focusin', (e) => {
@@ -636,6 +708,7 @@
         if (e.target.classList.contains('dep-name')) showDepSuggestions(e.target);
         if (e.target.classList.contains('sub-key')) showSubKeySuggestions(e.target);
         if (e.target.classList.contains('sub-val')) showSubValSuggestions(e.target);
+        if (e.target.classList.contains('comp-name')) showCompSuggestions(e.target);
     });
 
     modalEl.addEventListener('focusout', (e) => {
@@ -659,6 +732,10 @@
             }
             if (e.target.classList.contains('sub-val')) {
                 const dropdown = e.target.parentElement.querySelector('.sub-suggest-val');
+                if (dropdown) dropdown.classList.add('d-none');
+            }
+            if (e.target.classList.contains('comp-name')) {
+                const dropdown = e.target.parentElement.querySelector('.comp-suggest');
                 if (dropdown) dropdown.classList.add('d-none');
             }
         }, 200);
@@ -768,6 +845,31 @@
         dropdown.classList.remove('d-none');
 
         dropdown.querySelectorAll('.sub-suggest-val-item').forEach(item => {
+            item.addEventListener('mousedown', (ev) => {
+                ev.preventDefault();
+                input.value = item.dataset.value;
+                dropdown.classList.add('d-none');
+            });
+        });
+    }
+
+    function showCompSuggestions(input) {
+        const dropdown = input.parentElement.querySelector('.comp-suggest');
+        if (!dropdown || !componentSuggestions) return;
+        const q = input.value.toLowerCase();
+        const filtered = componentSuggestions.filter(c => c.toLowerCase().includes(q));
+        if (filtered.length === 0 || (filtered.length === 1 && filtered[0] === input.value)) {
+            dropdown.classList.add('d-none');
+            return;
+        }
+        dropdown.innerHTML = filtered.slice(0, 15).map(c =>
+            `<button type="button" class="list-group-item list-group-item-action py-1 px-2 small comp-suggest-item" data-value="${esc(c)}">
+                <span class="badge ${compColor(c)} me-1">${esc(c)}</span>
+            </button>`
+        ).join('');
+        dropdown.classList.remove('d-none');
+
+        dropdown.querySelectorAll('.comp-suggest-item').forEach(item => {
             item.addEventListener('mousedown', (ev) => {
                 ev.preventDefault();
                 input.value = item.dataset.value;
