@@ -98,6 +98,15 @@
             subappTabs.classList.remove('d-none');
         }
 
+        // Detect shared_ks mode (multi-helmrelease with single Kustomization)
+        const hasSharedKs = subapps.some(sa => sa.shared_ks);
+
+        // If shared KS, show KS section once above tabs
+        let sharedKsHtml = '';
+        if (hasSharedKs && subapps.length > 0) {
+            sharedKsHtml = buildKsHtml(subapps[0]);
+        }
+
         subappTabs.innerHTML = subapps.map((sa, i) => `
             <li class="nav-item" role="presentation">
                 <button class="nav-link ${i === 0 ? 'active' : ''}"
@@ -107,18 +116,19 @@
             </li>
         `).join('');
 
-        subappTabContent.innerHTML = subapps.map((sa, i) => `
+        subappTabContent.innerHTML =
+            (sharedKsHtml ? `<div class="shared-ks-section mb-3">${sharedKsHtml}</div><hr>` : '') +
+            subapps.map((sa, i) => `
             <div class="tab-pane fade ${i === 0 ? 'show active' : ''}"
                  id="pane-${slugify(sa.name)}" role="tabpanel">
-                ${buildSubappHtml(sa)}
+                ${buildSubappHtml(sa, hasSharedKs)}
             </div>
         `).join('');
     }
 
-    function buildSubappHtml(sa) {
+    function buildKsHtml(sa) {
         let html = '';
         const ks = sa.ks || {};
-        const hr = sa.helmrelease || {};
 
         // ── Kustomization ──
         html += sectionTitle('Kustomization', 'fa-layer-group');
@@ -169,8 +179,6 @@
         const subEntries = Object.entries(subs);
         html += sectionTitle('Substitutes (postBuild)', 'fa-key');
         html += `<div class="subs-section" data-subapp="${esc(sa.full_name)}">`;
-
-        // Read-only view
         html += '<div class="subs-display">';
         if (subEntries.length > 0) {
             html += '<table class="table table-sm table-bordered mb-3"><thead><tr><th style="width:30%">Cle</th><th>Valeur</th></tr></thead><tbody>';
@@ -182,19 +190,13 @@
             html += '<div class="small text-muted mb-3">Aucun substitute</div>';
         }
         html += '</div>';
-
-        // Edit view
         html += '<div class="subs-edit d-none">';
         html += '<table class="table table-sm table-bordered mb-1"><thead><tr><th style="width:35%">Cle</th><th>Valeur</th><th style="width:40px"></th></tr></thead>';
         html += '<tbody class="subs-rows">';
-        for (const [k, v] of subEntries) {
-            html += subsRow(k, String(v));
-        }
+        for (const [k, v] of subEntries) { html += subsRow(k, String(v)); }
         html += '</tbody></table>';
         html += '<button type="button" class="btn btn-sm btn-outline-primary subs-add-btn"><i class="fas fa-plus me-1"></i>Ajouter</button>';
-        html += '</div>';
-
-        html += '</div>';
+        html += '</div></div>';
 
         // ── SubstituteFrom ──
         const subFrom = ks.substitute_from || [];
@@ -212,63 +214,43 @@
         const comps = ks.components || [];
         html += sectionTitle('Composants', 'fa-puzzle-piece');
         html += `<div class="comp-section" data-subapp="${esc(sa.full_name)}">`;
-
-        // Read-only view
         html += '<div class="comp-display">';
         if (comps.length > 0) {
             html += '<div class="mb-3">';
-            for (const c of comps) {
-                html += `<span class="badge ${compColor(c)} me-1 mb-1">${esc(c)}</span>`;
-            }
+            for (const c of comps) { html += `<span class="badge ${compColor(c)} me-1 mb-1">${esc(c)}</span>`; }
             html += '</div>';
         } else {
             html += '<div class="small text-muted mb-3">Aucun composant</div>';
         }
         html += '</div>';
-
-        // Edit view
         html += '<div class="comp-edit d-none">';
         html += '<table class="table table-sm table-bordered mb-1"><thead><tr><th>Composant</th><th style="width:40px"></th></tr></thead>';
         html += '<tbody class="comp-rows">';
-        for (const c of comps) {
-            html += compRow(c);
-        }
+        for (const c of comps) { html += compRow(c); }
         html += '</tbody></table>';
         html += '<button type="button" class="btn btn-sm btn-outline-primary comp-add-btn"><i class="fas fa-plus me-1"></i>Ajouter</button>';
-        html += '</div>';
-
-        html += '</div>';
+        html += '</div></div>';
 
         // ── Dependances ──
         const deps = ks.depends_on || [];
         html += sectionTitle('Dependances', 'fa-sitemap');
         html += `<div class="dep-section" data-subapp="${esc(sa.full_name)}">`;
-
-        // Read-only view
         html += '<div class="dep-display">';
         if (deps.length > 0) {
             html += '<table class="table table-sm table-bordered mb-3"><thead><tr><th>Nom</th><th>Namespace</th></tr></thead><tbody>';
-            for (const d of deps) {
-                html += `<tr><td>${esc(d.name)}</td><td><span class="badge bg-primary">${esc(d.namespace)}</span></td></tr>`;
-            }
+            for (const d of deps) { html += `<tr><td>${esc(d.name)}</td><td><span class="badge bg-primary">${esc(d.namespace)}</span></td></tr>`; }
             html += '</tbody></table>';
         } else {
             html += '<div class="small text-muted mb-3">Aucune dependance</div>';
         }
         html += '</div>';
-
-        // Edit view
         html += '<div class="dep-edit d-none">';
         html += '<table class="table table-sm table-bordered mb-1"><thead><tr><th>Nom</th><th>Namespace</th><th style="width:40px"></th></tr></thead>';
         html += '<tbody class="dep-rows">';
-        for (const d of deps) {
-            html += depRow(d.name, d.namespace);
-        }
+        for (const d of deps) { html += depRow(d.name, d.namespace); }
         html += '</tbody></table>';
         html += '<button type="button" class="btn btn-sm btn-outline-primary dep-add-btn"><i class="fas fa-plus me-1"></i>Ajouter</button>';
-        html += '</div>';
-
-        html += '</div>';
+        html += '</div></div>';
 
         // ── Health Checks ──
         const hcs = ks.health_checks || [];
@@ -279,6 +261,18 @@
                 html += `<span class="badge bg-outline-secondary border me-1">${esc(hc.kind)}: ${esc(hc.name)}</span>`;
             }
             html += '</div>';
+        }
+
+        return html;
+    }
+
+    function buildSubappHtml(sa, skipKs) {
+        let html = '';
+        const hr = sa.helmrelease || {};
+
+        // Show KS section only if not shared (or not skipped)
+        if (!skipKs) {
+            html += buildKsHtml(sa);
         }
 
         // ── HelmRelease ──
@@ -407,12 +401,21 @@
         if (!currentApp) return;
         saveBtn.disabled = true;
 
-        for (const sa of (currentApp.subapps || [])) {
-            const changes = {};
+        // For shared_ks, save KS changes only once using the first subapp
+        const subapps = currentApp.subapps || [];
+        const hasSharedKs = subapps.some(sa => sa.shared_ks);
+        let ksChangesSaved = false;
 
-            // Substitutes
-            const subsSection = modalEl.querySelector(`.subs-section[data-subapp="${sa.full_name}"]`);
-            if (subsSection) {
+        for (const sa of subapps) {
+            const changes = {};
+            // The full_name to use for KS PATCH: ks_full_name for shared_ks, full_name otherwise
+            const ksTargetName = sa.ks_full_name || sa.full_name;
+
+            // Substitutes - only collect if this subapp owns the KS section
+            // For shared_ks, data-subapp on KS section is set to first subapp's full_name
+            const subsSection = modalEl.querySelector(`.subs-section[data-subapp="${sa.full_name}"]`)
+                || (hasSharedKs && !ksChangesSaved ? modalEl.querySelector(`.subs-section[data-subapp="${subapps[0].full_name}"]`) : null);
+            if (subsSection && !(hasSharedKs && ksChangesSaved)) {
                 const subsRows = subsSection.querySelectorAll('.subs-rows tr');
                 const newSubs = {};
                 for (const row of subsRows) {
@@ -431,49 +434,61 @@
             }
 
             // KS fields
-            const ksEdits = modalEl.querySelectorAll(`.ks-edit[data-subapp="${sa.full_name}"]`);
-            ksEdits.forEach(input => {
-                const field = input.dataset.field;
-                const val = input.value;
-                const orig = sa.ks[field];
-                if (String(orig) !== val) changes[field] = val;
-            });
+            const ksTarget = hasSharedKs ? subapps[0].full_name : sa.full_name;
+            if (!(hasSharedKs && ksChangesSaved)) {
+                const ksEdits = modalEl.querySelectorAll(`.ks-edit[data-subapp="${ksTarget}"]`);
+                ksEdits.forEach(input => {
+                    const field = input.dataset.field;
+                    const val = input.value;
+                    const orig = sa.ks[field];
+                    if (String(orig) !== val) changes[field] = val;
+                });
+            }
 
             // Components
-            const compSection = modalEl.querySelector(`.comp-section[data-subapp="${sa.full_name}"]`);
-            if (compSection) {
-                const compRows = compSection.querySelectorAll('.comp-rows tr');
-                const newComps = [];
-                for (const row of compRows) {
-                    const nameInput = row.querySelector('.comp-name');
-                    if (nameInput && nameInput.value.trim()) {
-                        newComps.push(nameInput.value.trim());
+            if (!(hasSharedKs && ksChangesSaved)) {
+                const compSection = modalEl.querySelector(`.comp-section[data-subapp="${ksTarget}"]`);
+                if (compSection) {
+                    const compRows = compSection.querySelectorAll('.comp-rows tr');
+                    const newComps = [];
+                    for (const row of compRows) {
+                        const nameInput = row.querySelector('.comp-name');
+                        if (nameInput && nameInput.value.trim()) {
+                            newComps.push(nameInput.value.trim());
+                        }
                     }
-                }
-                const origComps = (sa.ks.components || []).slice().sort().join(',');
-                const newCompsStr = newComps.slice().sort().join(',');
-                if (origComps !== newCompsStr) {
-                    changes.components = newComps;
+                    const origComps = (sa.ks.components || []).slice().sort().join(',');
+                    const newCompsStr = newComps.slice().sort().join(',');
+                    if (origComps !== newCompsStr) {
+                        changes.components = newComps;
+                    }
                 }
             }
 
             // Dependencies
-            const depSection = modalEl.querySelector(`.dep-section[data-subapp="${sa.full_name}"]`);
-            if (depSection) {
-                const depRows = depSection.querySelectorAll('.dep-rows tr');
-                const newDeps = [];
-                for (const row of depRows) {
-                    const nameInput = row.querySelector('.dep-name');
-                    const nsInput = row.querySelector('.dep-ns');
-                    if (nameInput && nsInput && nameInput.value.trim()) {
-                        newDeps.push({ name: nameInput.value.trim(), namespace: nsInput.value.trim() });
+            if (!(hasSharedKs && ksChangesSaved)) {
+                const depSection = modalEl.querySelector(`.dep-section[data-subapp="${ksTarget}"]`);
+                if (depSection) {
+                    const depRows = depSection.querySelectorAll('.dep-rows tr');
+                    const newDeps = [];
+                    for (const row of depRows) {
+                        const nameInput = row.querySelector('.dep-name');
+                        const nsInput = row.querySelector('.dep-ns');
+                        if (nameInput && nsInput && nameInput.value.trim()) {
+                            newDeps.push({ name: nameInput.value.trim(), namespace: nsInput.value.trim() });
+                        }
+                    }
+                    const origDeps = (sa.ks.depends_on || []).map(d => `${d.name}|${d.namespace}`).sort().join(',');
+                    const newDepsStr = newDeps.map(d => `${d.name}|${d.namespace}`).sort().join(',');
+                    if (origDeps !== newDepsStr) {
+                        changes.dependsOn = newDeps;
                     }
                 }
-                const origDeps = (sa.ks.depends_on || []).map(d => `${d.name}|${d.namespace}`).sort().join(',');
-                const newDepsStr = newDeps.map(d => `${d.name}|${d.namespace}`).sort().join(',');
-                if (origDeps !== newDepsStr) {
-                    changes.dependsOn = newDeps;
-                }
+            }
+
+            // For shared_ks, only save KS changes once
+            if (hasSharedKs && Object.keys(changes).length > 0) {
+                ksChangesSaved = true;
             }
 
             if (Object.keys(changes).length === 0) continue;
@@ -482,7 +497,7 @@
                 const resp = await fetch(`/api/apps/${encodeURIComponent(currentApp.namespace)}/${encodeURIComponent(currentApp.name)}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ subapp_full_name: sa.full_name, changes })
+                    body: JSON.stringify({ subapp_full_name: ksTargetName, changes })
                 });
                 if (!resp.ok) {
                     const err = await resp.json();

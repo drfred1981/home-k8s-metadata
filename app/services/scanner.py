@@ -271,22 +271,58 @@ def get_app_detail(repo_path, namespace, app_name):
             "substitute_from": substitute_from,
         }
 
-        # Résoudre le helmrelease depuis spec.path
-        hr_detail = None
+        # Résoudre le(s) helmrelease(s) depuis spec.path
         spec_path = spec.get("path", "")
         if spec_path.startswith("./"):
             spec_path = spec_path[2:]
         hr_file = os.path.join(repo_path, spec_path, "helmrelease.yaml")
-        if os.path.isfile(hr_file):
-            hr_detail = _parse_helmrelease_detail(hr_file)
 
-        subapp = {
-            "name": subapp_name,
-            "full_name": meta_name,
-            "ks": ks_detail,
-            "helmrelease": hr_detail,
-        }
-        result["subapps"].append(subapp)
+        if os.path.isfile(hr_file):
+            # Cas simple : un seul helmrelease directement dans le path
+            subapp = {
+                "name": subapp_name,
+                "full_name": meta_name,
+                "ks": ks_detail,
+                "helmrelease": _parse_helmrelease_detail(hr_file),
+            }
+            result["subapps"].append(subapp)
+        else:
+            # Cas multi-helmrelease : scanner les sous-dossiers récursivement
+            base_dir = os.path.join(repo_path, spec_path)
+            hr_files = []
+            if os.path.isdir(base_dir):
+                for root, _dirs, files in os.walk(base_dir):
+                    if "helmrelease.yaml" in files:
+                        hr_files.append(os.path.join(root, "helmrelease.yaml"))
+            hr_files.sort()
+
+            if hr_files:
+                # Créer un subapp par helmrelease trouvé
+                for hr_path_found in hr_files:
+                    hr_detail = _parse_helmrelease_detail(hr_path_found)
+                    if not hr_detail:
+                        continue
+                    hr_name = hr_detail.get("name", "")
+                    # Dériver un nom court depuis le nom du helmrelease
+                    short_name = hr_name.replace(app_name + "-", "") if hr_name else os.path.basename(os.path.dirname(hr_path_found))
+                    subapp = {
+                        "name": short_name,
+                        "full_name": hr_name or short_name,
+                        "ks_full_name": meta_name,  # Vrai nom du Kustomization pour le writer
+                        "ks": ks_detail,
+                        "helmrelease": hr_detail,
+                        "shared_ks": True,
+                    }
+                    result["subapps"].append(subapp)
+            else:
+                # Aucun helmrelease trouvé, garder le subapp sans helmrelease
+                subapp = {
+                    "name": subapp_name,
+                    "full_name": meta_name,
+                    "ks": ks_detail,
+                    "helmrelease": None,
+                }
+                result["subapps"].append(subapp)
 
     return result
 
