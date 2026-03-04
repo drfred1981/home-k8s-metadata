@@ -281,7 +281,7 @@
             if (hr.ingress && Object.keys(hr.ingress).length > 0) {
                 html += sectionTitle('Ingress', 'fa-globe');
                 for (const [ingName, ingDef] of Object.entries(hr.ingress)) {
-                    const saPath = (sa.ks || {}).path || '';
+                    const saPath = sa.helmrelease_path || (sa.ks || {}).path || '';
                     html += `<div class="card mb-2 annot-card" data-subapp-path="${esc(saPath)}" data-ingress="${esc(ingName)}"><div class="card-body p-2">`;
                     html += `<strong>${esc(ingName)}</strong> &mdash; className: <code>${esc(ingDef.className || '-')}</code>`;
                     if (ingDef.hosts && ingDef.hosts.length) {
@@ -530,7 +530,7 @@
             }
 
             // Compare with original
-            const origCard = (currentApp.subapps || []).find(sa => (sa.ks || {}).path === subappPath);
+            const origCard = (currentApp.subapps || []).find(sa => (sa.helmrelease_path || (sa.ks || {}).path) === subappPath);
             const origAnnots = origCard?.helmrelease?.ingress?.[ingressName]?.annotations || {};
             const origKeys = Object.keys(origAnnots).sort().join('|');
             const origVals = Object.keys(origAnnots).sort().map(k => origAnnots[k]).join('|');

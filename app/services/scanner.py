@@ -284,6 +284,7 @@ def get_app_detail(repo_path, namespace, app_name):
                 "full_name": meta_name,
                 "ks": ks_detail,
                 "helmrelease": _parse_helmrelease_detail(hr_file),
+                "helmrelease_path": spec_path,
             }
             result["subapps"].append(subapp)
         else:
@@ -305,12 +306,14 @@ def get_app_detail(repo_path, namespace, app_name):
                     hr_name = hr_detail.get("name", "")
                     # Dériver un nom court depuis le nom du helmrelease
                     short_name = hr_name.replace(app_name + "-", "") if hr_name else os.path.basename(os.path.dirname(hr_path_found))
+                    hr_rel_dir = os.path.relpath(os.path.dirname(hr_path_found), repo_path)
                     subapp = {
                         "name": short_name,
                         "full_name": hr_name or short_name,
                         "ks_full_name": meta_name,  # Vrai nom du Kustomization pour le writer
                         "ks": ks_detail,
                         "helmrelease": hr_detail,
+                        "helmrelease_path": hr_rel_dir,
                         "shared_ks": True,
                     }
                     result["subapps"].append(subapp)
