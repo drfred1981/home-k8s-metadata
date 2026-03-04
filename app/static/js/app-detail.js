@@ -20,6 +20,7 @@
     let editMode = false;
     let annotationSuggestions = null; // {key: [values]} loaded once
     let dependencySuggestions = null; // [{name, namespace}] loaded once
+    let substituteSuggestions = null; // {key: [values]} loaded once
 
     window.openAppDetail = function (namespace, name, displayName, iconSrc) {
         editMode = false;
@@ -48,12 +49,16 @@
         const depPromise = dependencySuggestions
             ? Promise.resolve(dependencySuggestions)
             : fetch('/api/dependencies/suggestions').then(r => r.json()).then(s => { dependencySuggestions = s; return s; });
+        const subPromise = substituteSuggestions
+            ? Promise.resolve(substituteSuggestions)
+            : fetch('/api/substitutes/suggestions').then(r => r.json()).then(s => { substituteSuggestions = s; return s; });
 
         Promise.all([
             fetch(`/api/apps/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}`)
                 .then(r => { if (!r.ok) throw new Error(`Erreur ${r.status}`); return r.json(); }),
             annotPromise,
-            depPromise
+            depPromise,
+            subPromise
         ])
             .then(([data]) => {
                 currentApp = data;
@@ -157,21 +162,34 @@
         // ── Substitutes ──
         const subs = ks.substitute || {};
         const subEntries = Object.entries(subs);
+        html += sectionTitle('Substitutes (postBuild)', 'fa-key');
+        html += `<div class="subs-section" data-subapp="${esc(sa.full_name)}">`;
+
+        // Read-only view
+        html += '<div class="subs-display">';
         if (subEntries.length > 0) {
-            html += sectionTitle('Substitutes (postBuild)', 'fa-key');
             html += '<table class="table table-sm table-bordered mb-3"><thead><tr><th style="width:30%">Cle</th><th>Valeur</th></tr></thead><tbody>';
             for (const [k, v] of subEntries) {
-                html += `<tr>
-                    <td><code>${esc(k)}</code></td>
-                    <td class="sub-field">
-                        <span class="sub-display">${esc(String(v))}</span>
-                        <input type="text" class="form-control form-control-sm sub-edit d-none"
-                               value="${esc(String(v))}" data-subapp="${esc(sa.full_name)}" data-key="${esc(k)}">
-                    </td>
-                </tr>`;
+                html += `<tr><td><code>${esc(k)}</code></td><td>${esc(String(v))}</td></tr>`;
             }
             html += '</tbody></table>';
+        } else {
+            html += '<div class="small text-muted mb-3">Aucun substitute</div>';
         }
+        html += '</div>';
+
+        // Edit view
+        html += '<div class="subs-edit d-none">';
+        html += '<table class="table table-sm table-bordered mb-1"><thead><tr><th style="width:35%">Cle</th><th>Valeur</th><th style="width:40px"></th></tr></thead>';
+        html += '<tbody class="subs-rows">';
+        for (const [k, v] of subEntries) {
+            html += subsRow(k, String(v));
+        }
+        html += '</tbody></table>';
+        html += '<button type="button" class="btn btn-sm btn-outline-primary subs-add-btn"><i class="fas fa-plus me-1"></i>Ajouter</button>';
+        html += '</div>';
+
+        html += '</div>';
 
         // ── SubstituteFrom ──
         const subFrom = ks.substitute_from || [];
@@ -347,8 +365,10 @@
         editBtn.classList.toggle('d-none', editing);
         saveBtn.classList.toggle('d-none', !editing);
         cancelBtn.classList.toggle('d-none', !editing);
-        modalEl.querySelectorAll('.sub-display, .ks-display').forEach(el => el.classList.toggle('d-none', editing));
-        modalEl.querySelectorAll('.sub-edit, .ks-edit').forEach(el => el.classList.toggle('d-none', !editing));
+        modalEl.querySelectorAll('.ks-display').forEach(el => el.classList.toggle('d-none', editing));
+        modalEl.querySelectorAll('.ks-edit').forEach(el => el.classList.toggle('d-none', !editing));
+        modalEl.querySelectorAll('.subs-display').forEach(el => el.classList.toggle('d-none', editing));
+        modalEl.querySelectorAll('.subs-edit').forEach(el => el.classList.toggle('d-none', !editing));
         modalEl.querySelectorAll('.annot-display').forEach(el => el.classList.toggle('d-none', editing));
         modalEl.querySelectorAll('.annot-edit').forEach(el => el.classList.toggle('d-none', !editing));
         modalEl.querySelectorAll('.dep-display').forEach(el => el.classList.toggle('d-none', editing));
@@ -364,16 +384,23 @@
             const changes = {};
 
             // Substitutes
-            const subEdits = modalEl.querySelectorAll(`.sub-edit[data-subapp="${sa.full_name}"]`);
-            if (subEdits.length) {
-                const substitute = {};
-                let hasChange = false;
-                subEdits.forEach(input => {
-                    substitute[input.dataset.key] = input.value;
-                    const orig = (sa.ks.substitute || {})[input.dataset.key];
-                    if (String(orig) !== input.value) hasChange = true;
-                });
-                if (hasChange) changes.substitute = substitute;
+            const subsSection = modalEl.querySelector(`.subs-section[data-subapp="${sa.full_name}"]`);
+            if (subsSection) {
+                const subsRows = subsSection.querySelectorAll('.subs-rows tr');
+                const newSubs = {};
+                for (const row of subsRows) {
+                    const keyInput = row.querySelector('.sub-key');
+                    const valInput = row.querySelector('.sub-val');
+                    if (keyInput && valInput && keyInput.value.trim()) {
+                        newSubs[keyInput.value.trim()] = valInput.value;
+                    }
+                }
+                const origSubs = sa.ks.substitute || {};
+                const origStr = Object.keys(origSubs).sort().map(k => `${k}=${origSubs[k]}`).join('|');
+                const newStr = Object.keys(newSubs).sort().map(k => `${k}=${newSubs[k]}`).join('|');
+                if (origStr !== newStr) {
+                    changes.substitute = newSubs;
+                }
             }
 
             // KS fields
@@ -503,6 +530,21 @@
         toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
     }
 
+    // ── Substitute row + autocomplete ──
+    function subsRow(key, value) {
+        return `<tr>
+            <td><div class="position-relative">
+                <input type="text" class="form-control form-control-sm sub-key" value="${esc(key)}" autocomplete="off" placeholder="cle...">
+                <div class="sub-suggest list-group position-absolute w-100 d-none" style="z-index:1050;max-height:200px;overflow-y:auto"></div>
+            </div></td>
+            <td><div class="position-relative">
+                <input type="text" class="form-control form-control-sm sub-val" value="${esc(value)}" autocomplete="off" placeholder="valeur...">
+                <div class="sub-suggest-val list-group position-absolute w-100 d-none" style="z-index:1050;max-height:200px;overflow-y:auto"></div>
+            </div></td>
+            <td><button type="button" class="btn btn-sm btn-outline-danger subs-del-btn"><i class="fas fa-trash"></i></button></td>
+        </tr>`;
+    }
+
     // ── Dependency row + autocomplete ──
     function depRow(name, namespace) {
         return `<tr>
@@ -547,6 +589,21 @@
             newRow.querySelector('.annot-key').focus();
             return;
         }
+        // Delete substitute row
+        const subsDelBtn = e.target.closest('.subs-del-btn');
+        if (subsDelBtn) {
+            subsDelBtn.closest('tr').remove();
+            return;
+        }
+        // Add substitute row
+        const subsAddBtn = e.target.closest('.subs-add-btn');
+        if (subsAddBtn) {
+            const tbody = subsAddBtn.previousElementSibling.querySelector('.subs-rows');
+            tbody.insertAdjacentHTML('beforeend', subsRow('', ''));
+            const newRow = tbody.lastElementChild;
+            newRow.querySelector('.sub-key').focus();
+            return;
+        }
         // Delete dependency row
         const depDelBtn = e.target.closest('.dep-del-btn');
         if (depDelBtn) {
@@ -564,17 +621,21 @@
         }
     });
 
-    // Autocomplete for annotation keys and dependency names
+    // Autocomplete for annotation keys, dependency names, substitute keys
     modalEl.addEventListener('input', (e) => {
         if (e.target.classList.contains('annot-key')) showKeySuggestions(e.target);
         if (e.target.classList.contains('annot-val')) showValSuggestions(e.target);
         if (e.target.classList.contains('dep-name')) showDepSuggestions(e.target);
+        if (e.target.classList.contains('sub-key')) showSubKeySuggestions(e.target);
+        if (e.target.classList.contains('sub-val')) showSubValSuggestions(e.target);
     });
 
     modalEl.addEventListener('focusin', (e) => {
         if (e.target.classList.contains('annot-key')) showKeySuggestions(e.target);
         if (e.target.classList.contains('annot-val')) showValSuggestions(e.target);
         if (e.target.classList.contains('dep-name')) showDepSuggestions(e.target);
+        if (e.target.classList.contains('sub-key')) showSubKeySuggestions(e.target);
+        if (e.target.classList.contains('sub-val')) showSubValSuggestions(e.target);
     });
 
     modalEl.addEventListener('focusout', (e) => {
@@ -590,6 +651,14 @@
             }
             if (e.target.classList.contains('dep-name')) {
                 const dropdown = e.target.parentElement.querySelector('.dep-suggest');
+                if (dropdown) dropdown.classList.add('d-none');
+            }
+            if (e.target.classList.contains('sub-key')) {
+                const dropdown = e.target.parentElement.querySelector('.sub-suggest');
+                if (dropdown) dropdown.classList.add('d-none');
+            }
+            if (e.target.classList.contains('sub-val')) {
+                const dropdown = e.target.parentElement.querySelector('.sub-suggest-val');
                 if (dropdown) dropdown.classList.add('d-none');
             }
         }, 200);
@@ -643,6 +712,62 @@
         dropdown.classList.remove('d-none');
 
         dropdown.querySelectorAll('.annot-suggest-val-item').forEach(item => {
+            item.addEventListener('mousedown', (ev) => {
+                ev.preventDefault();
+                input.value = item.dataset.value;
+                dropdown.classList.add('d-none');
+            });
+        });
+    }
+
+    function showSubKeySuggestions(input) {
+        const dropdown = input.parentElement.querySelector('.sub-suggest');
+        if (!dropdown || !substituteSuggestions) return;
+        const q = input.value.toLowerCase();
+        const keys = Object.keys(substituteSuggestions).filter(k => k.toLowerCase().includes(q));
+        if (keys.length === 0 || (keys.length === 1 && keys[0] === input.value)) {
+            dropdown.classList.add('d-none');
+            return;
+        }
+        dropdown.innerHTML = keys.slice(0, 15).map(k =>
+            `<button type="button" class="list-group-item list-group-item-action py-1 px-2 small sub-suggest-item" data-value="${esc(k)}">${esc(k)}</button>`
+        ).join('');
+        dropdown.classList.remove('d-none');
+
+        dropdown.querySelectorAll('.sub-suggest-item').forEach(item => {
+            item.addEventListener('mousedown', (ev) => {
+                ev.preventDefault();
+                input.value = item.dataset.value;
+                dropdown.classList.add('d-none');
+                // Auto-fill value if there's only one common value
+                const vals = substituteSuggestions[item.dataset.value] || [];
+                const valInput = input.closest('tr').querySelector('.sub-val');
+                if (vals.length === 1 && valInput && !valInput.value) {
+                    valInput.value = vals[0];
+                }
+                input.dispatchEvent(new Event('input'));
+            });
+        });
+    }
+
+    function showSubValSuggestions(input) {
+        const dropdown = input.parentElement.querySelector('.sub-suggest-val');
+        if (!dropdown || !substituteSuggestions) return;
+        const keyInput = input.closest('tr').querySelector('.sub-key');
+        if (!keyInput) return;
+        const vals = substituteSuggestions[keyInput.value] || [];
+        const q = input.value.toLowerCase();
+        const filtered = vals.filter(v => v.toLowerCase().includes(q));
+        if (filtered.length === 0 || (filtered.length === 1 && filtered[0] === input.value)) {
+            dropdown.classList.add('d-none');
+            return;
+        }
+        dropdown.innerHTML = filtered.slice(0, 10).map(v =>
+            `<button type="button" class="list-group-item list-group-item-action py-1 px-2 small sub-suggest-val-item" data-value="${esc(v)}">${esc(v)}</button>`
+        ).join('');
+        dropdown.classList.remove('d-none');
+
+        dropdown.querySelectorAll('.sub-suggest-val-item').forEach(item => {
             item.addEventListener('mousedown', (ev) => {
                 ev.preventDefault();
                 input.value = item.dataset.value;

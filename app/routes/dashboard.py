@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, render_template, request
 import os
 
-from services.scanner import scan_apps, get_app_detail, get_all_annotation_suggestions, get_all_dependency_suggestions
+from services.scanner import scan_apps, get_app_detail, get_all_annotation_suggestions, get_all_dependency_suggestions, get_all_substitute_suggestions
 from services.writer import update_ks_yaml, update_helmrelease_annotations
 
 dashboard_bp = Blueprint('dashboard', __name__)
@@ -53,6 +53,12 @@ def api_app_update(namespace, name):
 @dashboard_bp.route('/api/dependencies/suggestions')
 def api_dependency_suggestions():
     suggestions = get_all_dependency_suggestions(REPO_PATH)
+    return jsonify(suggestions)
+
+
+@dashboard_bp.route('/api/substitutes/suggestions')
+def api_substitute_suggestions():
+    suggestions = get_all_substitute_suggestions(REPO_PATH)
     return jsonify(suggestions)
 
 

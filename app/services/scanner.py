@@ -411,6 +411,37 @@ def get_all_dependency_suggestions(repo_path):
     return deps
 
 
+def get_all_substitute_suggestions(repo_path):
+    """Collecte toutes les clés et valeurs de substitutes pour l'autocomplete."""
+    apps_dir = os.path.join(repo_path, APPS_ROOT)
+    if not os.path.isdir(apps_dir):
+        return {}
+
+    substitutes = {}
+    for ns in os.listdir(apps_dir):
+        ns_dir = os.path.join(apps_dir, ns)
+        if not os.path.isdir(ns_dir):
+            continue
+        for app_name in os.listdir(ns_dir):
+            app_dir = os.path.join(ns_dir, app_name)
+            if not os.path.isdir(app_dir):
+                continue
+            ks_path = os.path.join(app_dir, "ks.yaml")
+            if not os.path.isfile(ks_path):
+                continue
+            docs = _load_yaml_all(ks_path)
+            for doc in docs:
+                if not doc or doc.get("kind") != "Kustomization":
+                    continue
+                post_build = doc.get("spec", {}).get("postBuild", {})
+                for k, v in post_build.get("substitute", {}).items():
+                    if k not in substitutes:
+                        substitutes[k] = set()
+                    substitutes[k].add(str(v) if v is not None else "")
+
+    return {k: sorted(v) for k, v in sorted(substitutes.items())}
+
+
 def get_all_annotation_suggestions(repo_path):
     """Collecte toutes les clés et valeurs d'annotations ingress pour l'autocomplete."""
     apps_dir = os.path.join(repo_path, APPS_ROOT)
