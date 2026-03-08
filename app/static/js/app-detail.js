@@ -81,12 +81,15 @@
 
     function renderDetail(data) {
         modalNsBadge.textContent = data.namespace;
-        if (data.active) {
-            modalActiveBadge.textContent = 'Active';
-            modalActiveBadge.className = 'badge bg-success ms-1';
-        } else {
+        if (!data.active) {
             modalActiveBadge.textContent = 'Inactive';
             modalActiveBadge.className = 'badge bg-secondary ms-1';
+        } else if (data.suspended) {
+            modalActiveBadge.textContent = 'Suspendu';
+            modalActiveBadge.className = 'badge bg-warning text-dark ms-1';
+        } else {
+            modalActiveBadge.textContent = 'Active';
+            modalActiveBadge.className = 'badge bg-success ms-1';
         }
 
         const subapps = data.subapps || [];
@@ -167,9 +170,20 @@
                         <option value="false" ${!ks.prune ? 'selected' : ''}>false</option>
                     </select>
                 </div>
+            </div>
+            <div class="col-md-1">
+                <label class="form-label text-muted small mb-0">suspend</label>
+                <div class="ks-field">
+                    <span class="ks-display">${ks.suspend ? '<span class="text-warning fw-bold">true</span>' : 'false'}</span>
+                    <select class="form-select form-select-sm ks-edit d-none"
+                            data-subapp="${esc(sa.full_name)}" data-field="suspend">
+                        <option value="true" ${ks.suspend ? 'selected' : ''}>true</option>
+                        <option value="false" ${!ks.suspend ? 'selected' : ''}>false</option>
+                    </select>
+                </div>
             </div>`;
         if (ks.path) {
-            html += `<div class="col-md-5"><label class="form-label text-muted small mb-0">path</label>
+            html += `<div class="col-md-4"><label class="form-label text-muted small mb-0">path</label>
                       <div><code class="small">${esc(ks.path)}</code></div></div>`;
         }
         html += '</div>';

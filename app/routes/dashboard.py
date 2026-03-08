@@ -40,7 +40,7 @@ def api_app_update(namespace, name):
     if not subapp_full_name:
         return jsonify({"error": "subapp_full_name requis"}), 400
 
-    allowed = {"interval", "retryInterval", "timeout", "wait", "prune", "substitute", "dependsOn", "components"}
+    allowed = {"interval", "retryInterval", "timeout", "wait", "prune", "suspend", "substitute", "dependsOn", "components"}
     filtered = {k: v for k, v in changes.items() if k in allowed}
 
     try:

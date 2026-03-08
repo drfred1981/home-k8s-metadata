@@ -66,6 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (group && app.group !== group) return false;
             if (active === 'true' && !app.active) return false;
             if (active === 'false' && app.active) return false;
+            if (active === 'suspended' && !(app.active && app.suspended)) return false;
             return true;
         });
 
@@ -83,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         tbody.innerHTML = filtered.map(app => `
-            <tr class="${app.active ? '' : 'table-secondary'}" style="cursor:pointer"
+            <tr class="${!app.active ? 'table-secondary' : app.suspended ? 'table-warning' : ''}" style="cursor:pointer"
                 data-ns="${escHtml(app.namespace)}" data-name="${escHtml(app.name)}"
                 data-display="${escHtml(app.display_name || app.name)}" data-icon="${iconUrl(app)}">
                 <td>
@@ -96,13 +97,53 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${escHtml(app.group || '-')}</td>
                 <td>${accessBadge(app)}</td>
                 <td>${infraBadges(app)}</td>
-                <td>${app.active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>'}</td>
+                <td>${statusBadge(app)}</td>
             </tr>
         `).join('');
     }
 
-    // Event delegation pour le clic sur les lignes
-    tbody.addEventListener('click', (e) => {
+    // Event delegation pour le clic sur les lignes et boutons suspend
+    tbody.addEventListener('click', async (e) => {
+        // Bouton suspend/resume
+        const btn = e.target.closest('.suspend-toggle');
+        if (btn) {
+            e.stopPropagation();
+            const ns = btn.dataset.ns;
+            const appName = btn.dataset.app;
+            const action = btn.dataset.action;
+            const newSuspend = action === 'suspend';
+            const label = newSuspend ? 'suspendre' : 'reprendre';
+            if (!confirm(`Voulez-vous ${label} l'application ${appName} ?`)) return;
+
+            btn.disabled = true;
+            try {
+                const detailResp = await fetch(`/api/apps/${encodeURIComponent(ns)}/${encodeURIComponent(appName)}`);
+                const detail = await detailResp.json();
+                for (const sa of (detail.subapps || [])) {
+                    const fullName = sa.ks_full_name || sa.full_name;
+                    const resp = await fetch(`/api/apps/${encodeURIComponent(ns)}/${encodeURIComponent(appName)}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ subapp_full_name: fullName, changes: { suspend: newSuspend } })
+                    });
+                    if (!resp.ok) {
+                        const err = await resp.json();
+                        alert(`Erreur: ${err.error}`);
+                        btn.disabled = false;
+                        return;
+                    }
+                }
+                const apps = await fetch('/api/apps').then(r => r.json());
+                allApps = apps;
+                render();
+            } catch (err) {
+                alert(`Erreur reseau: ${err.message}`);
+                btn.disabled = false;
+            }
+            return;
+        }
+
+        // Clic sur ligne → ouvrir le detail
         const tr = e.target.closest('tr[data-name]');
         if (!tr) return;
         if (window.openAppDetail) {
@@ -134,6 +175,24 @@ document.addEventListener('DOMContentLoaded', () => {
         if (app.has_monitoring) badges.push(`<span class="badge bg-success">${app.has_monitoring === 'external' ? 'Gatus ext.' : 'Gatus int.'}</span>`);
         if (app.has_storage) badges.push(`<span class="badge bg-info">${escHtml(app.has_storage)}</span>`);
         return badges.join(' ') || '<span class="text-muted">-</span>';
+    }
+
+    function statusBadge(app) {
+        if (!app.active) return '<span class="badge bg-secondary">Inactive</span>';
+        if (app.suspended) {
+            return `<span class="badge bg-warning text-dark">Suspendu</span>
+                <button class="btn btn-sm btn-outline-success ms-1 suspend-toggle"
+                        data-ns="${escHtml(app.namespace)}" data-app="${escHtml(app.name)}"
+                        data-action="resume" title="Reprendre la reconciliation">
+                    <i class="fas fa-play"></i>
+                </button>`;
+        }
+        return `<span class="badge bg-success">Active</span>
+            <button class="btn btn-sm btn-outline-warning ms-1 suspend-toggle"
+                    data-ns="${escHtml(app.namespace)}" data-app="${escHtml(app.name)}"
+                    data-action="suspend" title="Suspendre la reconciliation">
+                <i class="fas fa-pause"></i>
+            </button>`;
     }
 
     function escHtml(str) {

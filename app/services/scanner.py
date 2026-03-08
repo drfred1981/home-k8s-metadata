@@ -60,6 +60,7 @@ def _scan_single_app(app_dir, app_name, namespace, is_active):
         "name": app_name,
         "namespace": namespace,
         "active": is_active,
+        "suspended": False,
         "version": None,
         "image": None,
         "display_name": None,
@@ -124,6 +125,7 @@ def _parse_ks_yaml(ks_path, app_info):
         if subapp_name == "app" or len(subapps) == 1:
             app_info["components"] = components
             app_info["depends_on"] = depends_on
+            app_info["suspended"] = spec.get("suspend", False) is True
             app_info["has_database"] = any("cnpg" in c for c in components)
             monitoring = [c for c in components if "gatus" in c]
             if monitoring:
@@ -217,6 +219,7 @@ def get_app_detail(repo_path, namespace, app_name):
         "name": app_name,
         "namespace": namespace,
         "active": app_name in active_apps,
+        "suspended": False,
         "subapps": [],
     }
 
@@ -262,6 +265,7 @@ def get_app_detail(repo_path, namespace, app_name):
             "timeout": spec.get("timeout"),
             "wait": spec.get("wait"),
             "prune": spec.get("prune"),
+            "suspend": spec.get("suspend", False),
             "path": spec.get("path"),
             "components": components,
             "components_raw": components_raw,
@@ -326,6 +330,11 @@ def get_app_detail(repo_path, namespace, app_name):
                     "helmrelease": None,
                 }
                 result["subapps"].append(subapp)
+
+    # Déterminer l'état suspendu depuis le premier subapp
+    if result["subapps"]:
+        first_ks = result["subapps"][0].get("ks", {})
+        result["suspended"] = first_ks.get("suspend", False) is True
 
     return result
 

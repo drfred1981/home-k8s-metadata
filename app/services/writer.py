@@ -47,12 +47,15 @@ def update_ks_yaml(repo_path, namespace, app_name, subapp_full_name, changes):
             if field in changes:
                 spec[field] = changes[field]
 
-        for field in ("wait", "prune"):
+        for field in ("wait", "prune", "suspend"):
             if field in changes:
                 val = changes[field]
                 if isinstance(val, str):
                     val = val.lower() == "true"
-                spec[field] = val
+                if field == "suspend" and not val:
+                    spec.pop("suspend", None)
+                else:
+                    spec[field] = val
 
         # Merge substitutes
         if "substitute" in changes and changes["substitute"]:
