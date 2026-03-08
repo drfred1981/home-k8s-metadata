@@ -136,17 +136,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                // 2. Scale pods to 0 (suspend) or let FluxCD restore (resume)
-                if (newSuspend) {
-                    const scaleResp = await fetch(`/api/apps/${encodeURIComponent(ns)}/${encodeURIComponent(appName)}/scale`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ replicas: 0 })
-                    });
-                    if (!scaleResp.ok) {
-                        const err = await scaleResp.json();
-                        alert(`Suspend OK mais erreur scale: ${err.error}`);
-                    }
+                // 2. Scale pods to 0 (suspend) or back to 1 (resume)
+                const targetReplicas = newSuspend ? 0 : 1;
+                const scaleResp = await fetch(`/api/apps/${encodeURIComponent(ns)}/${encodeURIComponent(appName)}/scale`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ replicas: targetReplicas })
+                });
+                if (!scaleResp.ok) {
+                    const err = await scaleResp.json();
+                    alert(`${newSuspend ? 'Suspend' : 'Resume'} OK mais erreur scale: ${err.error}`);
                 }
 
                 const apps = await fetch('/api/apps').then(r => r.json());
