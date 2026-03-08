@@ -119,6 +119,8 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const detailResp = await fetch(`/api/apps/${encodeURIComponent(ns)}/${encodeURIComponent(appName)}`);
                 const detail = await detailResp.json();
+
+                // 1. Set suspend in ks.yaml for all subapps
                 for (const sa of (detail.subapps || [])) {
                     const fullName = sa.ks_full_name || sa.full_name;
                     const resp = await fetch(`/api/apps/${encodeURIComponent(ns)}/${encodeURIComponent(appName)}`, {
@@ -133,6 +135,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         return;
                     }
                 }
+
+                // 2. Scale pods to 0 (suspend) or let FluxCD restore (resume)
+                if (newSuspend) {
+                    const scaleResp = await fetch(`/api/apps/${encodeURIComponent(ns)}/${encodeURIComponent(appName)}/scale`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ replicas: 0 })
+                    });
+                    if (!scaleResp.ok) {
+                        const err = await scaleResp.json();
+                        alert(`Suspend OK mais erreur scale: ${err.error}`);
+                    }
+                }
+
                 const apps = await fetch('/api/apps').then(r => r.json());
                 allApps = apps;
                 render();

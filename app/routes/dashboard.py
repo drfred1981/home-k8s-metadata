@@ -3,6 +3,7 @@ import os
 
 from services.scanner import scan_apps, get_app_detail, get_all_annotation_suggestions, get_all_dependency_suggestions, get_all_substitute_suggestions, get_all_component_suggestions
 from services.writer import update_ks_yaml, update_helmrelease_annotations
+from services.k8s_client import scale_app
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
@@ -46,6 +47,23 @@ def api_app_update(namespace, name):
     try:
         update_ks_yaml(REPO_PATH, namespace, name, subapp_full_name, filtered)
         return jsonify({"message": "Modifications enregistrees"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@dashboard_bp.route('/api/apps/<namespace>/<name>/scale', methods=['POST'])
+def api_app_scale(namespace, name):
+    data = request.get_json()
+    if not data or "replicas" not in data:
+        return jsonify({"error": "replicas requis"}), 400
+
+    replicas = int(data["replicas"])
+    if replicas < 0:
+        return jsonify({"error": "replicas doit etre >= 0"}), 400
+
+    try:
+        scaled = scale_app(namespace, name, replicas)
+        return jsonify({"message": f"{len(scaled)} ressource(s) scalee(s)", "scaled": scaled})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
